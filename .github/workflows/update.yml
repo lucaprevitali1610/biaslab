@@ -1,0 +1,44 @@
+name: Aggiorna dati e pubblica il sito
+
+on:
+  schedule:
+    - cron: "23 5 * * 1-6"   # ogni mattina (lun-sab) alle 05:23 UTC
+    - cron: "47 21 * * 5"    # venerdì sera, dopo il report COT
+  workflow_dispatch: {}       # pulsante "Run workflow" manuale
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Scarica dati e calcola i punteggi
+        run: python pipeline/build.py
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
