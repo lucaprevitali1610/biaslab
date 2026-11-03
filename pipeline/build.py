@@ -40,7 +40,8 @@ def main():
             logging.error("nessun dato scaricato: interrompo per non sovrascrivere i dati esistenti")
             sys.exit(1)
 
-    board = compute.build(prices, cot, macro, args.out, demo=args.demo)
+    errors = {} if args.demo else fetch.ERRORS
+    board = compute.build(prices, cot, macro, args.out, demo=args.demo, errors=errors)
     n = len(board["instruments"])
     logging.info("scritti %d strumenti in %s", n, args.out)
 

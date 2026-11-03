@@ -155,6 +155,7 @@ def _transform(s, how, scale=1.0):
 
 
 _fred_down = False
+ERRORS = {}  # (valuta, indicatore) -> motivo
 
 
 def _fred(sid):
@@ -346,6 +347,7 @@ def fetch_macro():
             except Exception as e:
                 err = e
         if (cur, ind) not in out:
+            ERRORS[(cur, ind)] = str(err)[:200]
             log.warning("macro %s/%s non disponibile: %s", cur, ind, str(err)[:160])
     log.info("macro: %d serie scaricate in %.0fs", len(out), time.time() - t0)
     return out

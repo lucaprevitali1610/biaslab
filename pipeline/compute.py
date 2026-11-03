@@ -62,7 +62,12 @@ def indicator_score(ind_id, s, as_of=None):
                 "period": a.index[-1].strftime("%Y-%m")}
     latest, prev = float(a.iloc[-1]), float(a.iloc[-2])
     diffs = a.diff().dropna().iloc[-60:]
-    sd = float(diffs.std()) if len(diffs) > 5 else abs(prev) * 0.05 or 1.0
+    # volatilità robusta: la mediana ignora i picchi estremi (es. Covid 2020)
+    if len(diffs) > 5:
+        mad = float((diffs - diffs.median()).abs().median()) * 1.4826
+        sd = mad if mad > 1e-9 else float(diffs.std())
+    else:
+        sd = abs(prev) * 0.05
     sd = sd or 1.0
     z = (latest - prev) / sd
     if meta.get("invert"):
@@ -213,7 +218,7 @@ def history_dates(end):
 
 
 # ================================================================== build
-def build(prices, cot, macro, out_dir, demo=False, now=None):
+def build(prices, cot, macro, out_dir, demo=False, now=None, errors=None):
     out = Path(out_dir)
     (out / "inst").mkdir(parents=True, exist_ok=True)
     now = pd.Timestamp(now or datetime.now(timezone.utc).date())
@@ -311,7 +316,23 @@ def build(prices, cot, macro, out_dir, demo=False, now=None):
         }
     (out / "cot.json").write_text(json.dumps(cot_out, separators=(",", ":")))
 
+    status = []
+    for (cur, ind), spec in C.MACRO_SOURCES.items():
+        item = macro.get((cur, ind))
+        sc_ = board["currencies"][cur]["ind"].get(ind)
+        if item is not None:
+            s_ = item["series"]
+            status.append({"cur": cur, "ind": ind, "ok": sc_ is not None, "source": item["source"],
+                           "last": s_.index[-1].strftime("%Y-%m-%d"), "n": int(len(s_)),
+                           "error": None if sc_ is not None else "serie troppo corta per il confronto"})
+        else:
+            status.append({"cur": cur, "ind": ind, "ok": False, "source": spec.get("id") or spec.get("flow") or spec.get("area"),
+                           "src": spec["src"], "error": (errors or {}).get((cur, ind), "non scaricato")})
+    prices_ok = {i["id"]: i["ticker"] in prices for i in insts}
+    cot_ok = {code: code in cot for code in set(C.COT_CURRENCY.values()) | {i["cot"] for i in insts if i.get("cot")}}
+
     meta = {
+        "status": {"macro": status, "prices": prices_ok, "cot": cot_ok},
         "site": C.SITE_NAME, "demo": demo, "generated": board["generated"],
         "currencies": C.CURRENCIES, "currency_names": C.CURRENCY_NAMES,
         "groups": {"major": C.MAJORS, "cross": C.CROSSES, "index": list(C.INDICES), "commodity": list(C.COMMODITIES)},
