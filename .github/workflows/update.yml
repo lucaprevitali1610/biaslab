@@ -28,6 +28,8 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - name: Scarica dati e calcola i punteggi
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: python pipeline/build.py
       - uses: actions/upload-pages-artifact@v3
         with:
