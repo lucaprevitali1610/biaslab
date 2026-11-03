@@ -15,7 +15,7 @@ CURRENCY_NAMES = {
     "AUD": "Dollaro australiano", "NZD": "Dollaro neozelandese",
 }
 # codici paese usati da OECD e BIS
-OECD_AREA = {"USD": ["USA"], "EUR": ["EA20", "EA19"], "GBP": ["GBR"], "JPY": ["JPN"],
+OECD_AREA = {"USD": ["USA"], "EUR": ["EA21", "EA20", "EA19", "EA"], "GBP": ["GBR"], "JPY": ["JPN"],
              "CHF": ["CHE"], "CAD": ["CAN"], "AUD": ["AUS"], "NZD": ["NZL"]}
 BIS_AREA = {"USD": "US", "EUR": "XM", "GBP": "GB", "JPY": "JP", "CHF": "CH",
             "CAD": "CA", "AUD": "AU", "NZD": "NZ"}

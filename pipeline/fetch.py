@@ -252,10 +252,25 @@ def _period_to_date(p):
 
 
 def _oecd(spec, areas):
+    """Prova tutti i codici area (es. EA21, EA20...) e tiene la serie con i dati più recenti."""
     df = _oecd_flow(spec["flow"])
-    area = next((a for a in areas if (df.get("REF_AREA") == a).any()), None)
-    if area is None:
-        raise RuntimeError(f"area {areas} assente")
+    best, errs = None, []
+    for area in areas:
+        if not (df.get("REF_AREA") == area).any():
+            continue
+        try:
+            s = _oecd_area(df, spec, area)
+        except Exception as e:
+            errs.append(f"{area}: {e}")
+            continue
+        if s is not None and len(s) and (best is None or s.index[-1] > best.index[-1]):
+            best = s
+    if best is None:
+        raise RuntimeError(f"area {areas} assente o vuota {errs}")
+    return best
+
+
+def _oecd_area(df, spec, area):
     d = df[df["REF_AREA"] == area]
     freqs = None
     for k, v in spec["filters"].items():
@@ -269,11 +284,11 @@ def _oecd(spec, areas):
         if d[k].isin(vals).any():
             d = d[d[k].isin(vals)]
         else:
-            log.info("OECD %s: filtro %s=%s ignorato (valori: %s)", spec["flow"], k, v,
+            log.info("OECD %s %s: filtro %s=%s ignorato (valori: %s)", spec["flow"], area, k, v,
                      sorted(d[k].dropna().unique())[:8])
     if d.empty:
         raise RuntimeError("nessuna riga dopo i filtri")
-    if freqs and "FREQ" in d.columns:  # preferisci la prima frequenza disponibile
+    if freqs and "FREQ" in d.columns:
         for fq in freqs:
             if (d["FREQ"] == fq).any():
                 d = d[d["FREQ"] == fq]
