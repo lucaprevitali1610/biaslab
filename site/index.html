@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BiasLab — Bias macro, COT e stagionalità</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="demo"></div>
+<header class="top">
+  <div class="top-in">
+    <a class="logo" href="#board"><span class="logo-mark"></span><span id="site-name">BiasLab</span></a>
+    <nav class="nav" id="nav">
+      <a href="#board" data-r="board">Bias board</a>
+      <a href="#cot" data-r="cot">Posizionamento COT</a>
+      <a href="#metodo" data-r="metodo">Metodo</a>
+    </nav>
+    <div class="top-right">
+      <span id="stamp"></span>
+      <div class="goto">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="goto" placeholder="Vai a un mercato…" autocomplete="off">
+        <div class="goto-list" id="goto-list"></div>
+      </div>
+    </div>
+  </div>
+</header>
+<main id="app"><div class="empty">Caricamento…</div></main>
+<div class="foot"><span>Solo a scopo informativo, non è una consulenza finanziaria.</span><span id="foot-gen"></span></div>
+<script src="app.js"></script>
+</body>
+</html>
