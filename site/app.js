@@ -16,8 +16,37 @@ const sgn = (v) => v == null ? "—" : (v > 0 ? "+" : "") + v;
 const sgnf = (v, d = 2) => v == null || !isFinite(v) ? "—" : (v > 0 ? "+" : "") + nf(v, d);
 const kfmt = (v) => v == null ? "—" : (v > 0 ? "+" : "") + Math.round(v).toLocaleString("it-IT");
 
-const CCY_COLOR = { USD: "#364fc7", EUR: "#1971c2", GBP: "#862e9c", JPY: "#c92a2a", CHF: "#e8590c", CAD: "#d6336c", AUD: "#087f5b", NZD: "#2b8a3e" };
-const flag = (c) => `<span class="flag" style="background:${CCY_COLOR[c] || "#64748b"}">${c.slice(0, 2)}</span>`;
+const CCY_COLOR = { USD: "#1f3a8a", EUR: "#2e6ae6", GBP: "#7a3fd1", JPY: "#d6453d", CHF: "#e27b1f", CAD: "#c2306b", AUD: "#0f8a6a", NZD: "#14161b" };
+const CC2 = { USD: "US", EUR: "EU", GBP: "GB", JPY: "JP", CHF: "CH", CAD: "CA", AUD: "AU", NZD: "NZ" };
+const flag = (c) => `<span class="flag" style="background:${CCY_COLOR[c] || "#64748b"}">${CC2[c] || c.slice(0, 2)}</span>`;
+const flags = (...cs) => `<span class="flags">${cs.filter(Boolean).map(flag).join("")}</span>`;
+const dcls = (v) => v == null ? "dnn" : v >= 2 ? "dp2" : v >= 1 ? "dp1" : v <= -2 ? "dm2" : v <= -1 ? "dm1" : "d0";
+const dot = (v) => `<span class="dot ${dcls(v)}" title="${v == null ? "n.d." : sgn(v)}">${v == null || v === 0 ? "" : sgn(v)}</span>`;
+function sbar(v, max) {
+  if (v == null) return `<div class="sbar"><div class="sbar-t"></div><b class="z">—</b></div>`;
+  const w = Math.min(50, (Math.abs(v) / (max > 4 ? max * .6 : max)) * 50);
+  return `<div class="sbar"><div class="sbar-t"><span class="sbar-f ${v >= 0 ? "pos" : "neg"}" style="${v >= 0 ? `left:50%` : `left:${50 - w}%`};width:${w}%"></span></div><b class="${v > 0 ? "up" : v < 0 ? "dn" : "z"}">${sgn(v)}</b></div>`;
+}
+const arrow = (v) => `<span class="arrow ${v > 0 ? "up" : v < 0 ? "dn" : "z"}">${v > 0 ? "▲ " + sgn(v) : v < 0 ? "▼ " + v : "— 0"}</span>`;
+function gauge(v, max, W = 240) {
+  const H = W * .6, cx = W / 2, cy = H - 14, R = W / 2 - 18, sw = 14;
+  const P = (r) => { const t = Math.PI - ((r + 1) / 2) * Math.PI; return [cx + R * Math.cos(t), cy - R * Math.sin(t)]; };
+  const arc = (a, b, col) => { const [x1, y1] = P(a), [x2, y2] = P(b); return `<path d="M${x1},${y1} A${R},${R} 0 0 1 ${x2},${y2}" stroke="${col}" stroke-width="${sw}" fill="none" stroke-linecap="round"/>`; };
+  const segs = [[-1, -.37, "#ee4637"], [-.33, -.14, "#f7a197"], [-.1, .1, "#e2e2dc"], [.14, .33, "#7fd9ad"], [.37, 1, "#12a568"]];
+  const r = Math.max(-1, Math.min(1, (v || 0) / max)), [kx, ky] = P(r);
+  return `<svg class="gauge" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${segs.map((s) => arc(...s)).join("")}
+    <circle cx="${kx}" cy="${ky}" r="11" fill="#fff" stroke="#14161b" stroke-width="4"/>
+    <text x="${cx}" y="${cy - 22}" class="gauge-v" fill="${v > 0 ? "#12a568" : v < 0 ? "#ee4637" : "#14161b"}">${sgn(v)}</text>
+    <text x="${cx}" y="${cy}" class="gauge-s">su ±${max}</text></svg>`;
+}
+function sparkW(values, h = 44, color) {
+  const v = (values || []).filter((x) => x != null); if (v.length < 2) return "";
+  const lo = Math.min(...v, 0), hi = Math.max(...v, 0), n = values.length;
+  const X = (i) => (i / (n - 1)) * 100, Y = (x) => h - 3 - ((x - lo) / (hi - lo || 1)) * (h - 6);
+  let d = ""; values.forEach((x, i) => { if (x != null) d += (d ? "L" : "M") + X(i).toFixed(2) + "," + Y(x).toFixed(2); });
+  const col = color || (v.at(-1) >= 0 ? "#12a568" : "#ee4637");
+  return `<svg viewBox="0 0 100 ${h}" preserveAspectRatio="none" height="${h}"><line x1="0" x2="100" y1="${Y(0)}" y2="${Y(0)}" stroke="#d4d5cf" stroke-dasharray="2 2" vector-effect="non-scaling-stroke"/><path d="${d}L100,${Y(0)}L0,${Y(0)}Z" fill="${col}" fill-opacity=".1"/><path d="${d}" fill="none" stroke="${col}" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg>`;
+}
 const sc = (v) => v == null ? "sn" : v >= 2 ? "s2" : v >= 1 ? "s1" : v <= -2 ? "sm2" : v <= -1 ? "sm1" : "s0";
 const cell = (v, txt) => `<div class="cell ${sc(v)}">${txt ?? (v == null ? "—" : sgn(v))}</div>`;
 const tcls = (v, max) => { if (v == null) return "sn"; const r = v / max; return r >= .35 ? "s2" : r >= .12 ? "s1" : r <= -.35 ? "sm2" : r <= -.12 ? "sm1" : "s0"; };
@@ -74,7 +103,7 @@ function drawLine(el, o) {
   (o.ticks || []).forEach((t) => { g += `<text x="${X(t.i)}" y="${H - 6}" text-anchor="middle">${t.label}</text>`; });
   if (o.zero) { const y = Y(0, "l"); g += `<line x1="${L}" x2="${L + iw}" y1="${y}" y2="${y}" stroke="#c9ccd9" stroke-dasharray="3 3"/>`; }
   (o.refLines || []).forEach((r) => { const y = Y(r.v, "l"); g += `<line x1="${L}" x2="${L + iw}" y1="${y}" y2="${y}" stroke="${r.color}" stroke-opacity=".35" stroke-dasharray="2 4"/><text x="${L + 4}" y="${y - 4}" style="fill:${r.color};font-size:10px">${r.label}</text>`; });
-  if (o.band) { const [a, b] = o.band; g += `<rect x="${X(Math.min(a, b))}" y="${T}" width="${Math.max(2, Math.abs(X(b) - X(a)))}" height="${ih}" fill="#4f46e5" fill-opacity=".08" stroke="#4f46e5" stroke-opacity=".3"/>`; }
+  if (o.band) { const [a, b] = o.band; g += `<rect x="${X(Math.min(a, b))}" y="${T}" width="${Math.max(2, Math.abs(X(b) - X(a)))}" height="${ih}" rx="6" fill="#d9f56b" fill-opacity=".35" stroke="#9ec31f" stroke-opacity=".6"/>`; }
   let paths = "";
   o.series.forEach((s) => {
     const ax = s.axis || "l"; let d = "", pen = false, area = "", first = null, last = null;
@@ -121,7 +150,7 @@ function barChart(el, o) {
     let g = ""; ticks(lo, hi, 3).forEach((t) => { g += `<line class="gridline" x1="${L}" x2="${L + iw}" y1="${Y(t)}" y2="${Y(t)}"/><text x="${L - 8}" y="${Y(t) + 4}" text-anchor="end">${(o.fmt || nf)(t)}</text>`; });
     o.labels.forEach((lb, i) => { if (lb) g += `<text x="${L + bw * i + bw / 2}" y="${H - 6}" text-anchor="middle">${lb}</text>`; });
     let bars = "";
-    o.values.forEach((v, i) => { if (v == null) return; const y = Y(Math.max(v, 0)), h = Math.abs(Y(v) - Y(0)); bars += `<rect x="${L + bw * i + bw * .15}" y="${y}" width="${bw * .7}" height="${Math.max(1, h)}" rx="2" fill="${v >= 0 ? "#0e9f6e" : "#e5484d"}" fill-opacity=".85"><title>${esc(o.tips ? o.tips[i] : "")}: ${(o.fmt || nf)(v)}</title></rect>`; });
+    o.values.forEach((v, i) => { if (v == null) return; const y = Y(Math.max(v, 0)), h = Math.abs(Y(v) - Y(0)); bars += `<rect x="${L + bw * i + bw * .15}" y="${y}" width="${bw * .7}" height="${Math.max(1, h)}" rx="2" fill="${v >= 0 ? "#12a568" : "#ee4637"}" fill-opacity=".9"><title>${esc(o.tips ? o.tips[i] : "")}: ${(o.fmt || nf)(v)}</title></rect>`; });
     el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}"><g class="axis">${g}</g><line x1="${L}" x2="${L + iw}" y1="${Y(0)}" y2="${Y(0)}" stroke="#c9ccd9"/>${bars}</svg>`;
   };
   charts.add(el); el._draw();
@@ -133,7 +162,7 @@ function spark(values, w = 120, h = 30) {
   let d = ""; values.forEach((x, i) => { if (x != null) d += (d ? "L" : "M") + X(i).toFixed(1) + "," + Y(x).toFixed(1); });
   const up = v[v.length - 1] >= v[0];
   const zy = lo < 0 && hi > 0 ? `<line x1="0" x2="${w}" y1="${Y(0)}" y2="${Y(0)}" stroke="#d5d8e3" stroke-dasharray="2 2"/>` : "";
-  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${zy}<path d="${d}" fill="none" stroke="${up ? "#0e9f6e" : "#e5484d"}" stroke-width="1.6"/></svg>`;
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${zy}<path d="${d}" fill="none" stroke="${up ? "#12a568" : "#ee4637"}" stroke-width="1.6"/></svg>`;
 }
 
 const MONTHS = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
@@ -157,8 +186,11 @@ async function load() {
   document.title = `${S.meta.site} — Bias macro, COT e stagionalità`;
   if (S.board.demo) $("#demo").innerHTML = `<div class="demo-banner"><b>Dati dimostrativi.</b> Sono numeri sintetici per provare l'interfaccia: i dati reali arrivano quando la pipeline gira online.</div>`;
   const g = new Date(S.board.generated);
-  $("#stamp").textContent = `Aggiornato ${g.toLocaleDateString("it-IT", { day: "numeric", month: "short" })}, ${g.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
+  $("#stamp").textContent = `Aggiornato il ${g.toLocaleDateString("it-IT", { day: "numeric", month: "short" })}, ${g.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
   $("#foot-gen").textContent = `Dati al ${fmtDate(S.board.as_of)}`;
+  $("#side-foot").innerHTML = `<b><span class="live"></span>Aggiornamento automatico</b>Ogni mattina e il venerdì sera dopo il report COT.<br>Ultimo: ${fmtDate(S.board.as_of)}`;
+  document.addEventListener("keydown", (e) => { if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); $("#goto").focus(); } if (e.key === "Escape") closeDrawer(); });
+  $("#scrim").onclick = closeDrawer;
   setupGoto();
   window.addEventListener("hashchange", route);
   route();
@@ -166,7 +198,7 @@ async function load() {
 
 function route() {
   const h = decodeURIComponent(location.hash.slice(1)) || "board";
-  charts.clear();
+  charts.clear(); closeDrawer();
   $$("#nav a").forEach((a) => a.classList.toggle("on", h === a.dataset.r || (h.startsWith("pair-") && a.dataset.r === "board")));
   if (h.startsWith("pair-")) renderPair(h.slice(5).toUpperCase());
   else if (h === "cot") renderCot();
@@ -193,133 +225,145 @@ function setupGoto() {
 }
 
 /* ====================================================================== board */
-function boardRows(tab) {
-  const B = S.board, M = S.meta;
-  if (tab === "ccy") {
-    return M.currencies.map((c) => {
-      const r = B.currencies[c]; const cot = r.cot ? r.cot.score : null; const total = r.total + (cot || 0);
-      const ind = {}; M.indicators.forEach((m) => ind[m.id] = r.ind[m.id] ? r.ind[m.id].score : null);
-      return { id: c, ccy: true, label: `${flag(c)}${c}`, sub: r.name, ind, cot, season: null, total, max: 10, bias: biasOf(total, 10) };
-    });
-  }
-  return M.groups[tab].map((id) => {
-    const r = B.instruments[id];
-    const lbl = r.base ? `${flag(r.base)}${r.base}/${r.quote}` : esc(r.name);
-    return { id, label: lbl, ind: r.ind || {}, cot: r.cot, season: r.season, total: r.total, max: r.max, bias: r.bias, noMacro: !r.ind };
-  });
-}
+function ccyStrength(c) { const r = S.board.currencies[c]; return r.total + (r.cot ? r.cot.score : 0); }
 
 function renderBoard() {
   const B = S.board, M = S.meta;
   const fx = [...M.groups.major, ...M.groups.cross].map((id) => ({ id, ...B.instruments[id] }));
-  const best = [...fx].sort((a, b) => b.total - a.total)[0], worst = [...fx].sort((a, b) => a.total - b.total)[0];
+  const bulls = [...fx].sort((a, b) => b.total - a.total).slice(0, 3), bears = [...fx].sort((a, b) => a.total - b.total).slice(0, 3);
+  const ranks = M.currencies.map((c) => ({ c, v: ccyStrength(c), cot: B.currencies[c].cot })).sort((a, b) => b.v - a.v);
+  const movers = Object.entries(B.instruments).map(([id, r]) => ({ id, ...r })).filter((x) => x.chg && x.chg["1w"]).sort((a, b) => Math.abs(b.chg["1w"]) - Math.abs(a.chg["1w"])).slice(0, 7);
   const nb = fx.filter((x) => x.total / x.max >= .12).length, ns = fx.filter((x) => x.total / x.max <= -.12).length;
-  const ccyRank = M.currencies.map((c) => ({ c, v: B.currencies[c].total + (B.currencies[c].cot ? B.currencies[c].cot.score : 0) })).sort((a, b) => b.v - a.v);
   const counts = { ccy: M.currencies.length, major: M.groups.major.length, cross: M.groups.cross.length, index: M.groups.index.length, commodity: M.groups.commodity.length };
+  const setup = (x, kind) => `<div class="setup ${kind}" data-open="${x.id}"><div class="t"><span style="display:flex;align-items:center">${flags(x.base, x.quote)}${esc(x.name)}</span>${pill(x.bias)}</div><div class="big">${sgn(x.total)}<small>/ ${x.max}</small></div>${sparkW(x.spark, 40)}</div>`;
   $("#app").innerHTML = `
-  <div class="page-head"><div><h1>Bias board</h1><div class="sub">Macro, posizionamento COT e stagionalità in un unico punteggio</div></div><div class="stamp">Punteggi calcolati il ${fmtDate(B.as_of)}</div></div>
-  <div class="kpis">
-    <div class="kpi" data-go="${best.id}"><div class="l">Coppia più forte</div><div class="v">${esc(best.name)} ${tcell(best.total, best.max)}</div></div>
-    <div class="kpi" data-go="${worst.id}"><div class="l">Coppia più debole</div><div class="v">${esc(worst.name)} ${tcell(worst.total, worst.max)}</div></div>
-    <div class="kpi"><div class="l">Valuta più forte / più debole</div><div class="v">${flag(ccyRank[0].c)}${ccyRank[0].c} <span class="muted" style="font-weight:500">vs</span> ${flag(ccyRank.at(-1).c)}${ccyRank.at(-1).c}</div></div>
-    <div class="kpi"><div class="l">Coppie FX rialziste / ribassiste</div><div class="v"><span class="up">${nb}</span><span class="muted" style="font-weight:500">/</span><span class="dn">${ns}</span><span class="muted" style="font-size:12px;font-weight:600">su ${fx.length}</span></div></div>
+  <div class="hero"><div><div class="eyebrow">Panoramica · ${fmtDate(B.as_of)}</div><h1>Dove punta il mercato</h1><div class="sub">${nb} coppie rialziste e ${ns} ribassiste su ${fx.length} · macro, COT e stagionalità in un punteggio</div></div></div>
+  <div class="grid g-hero">
+    <div class="card"><div class="card-h"><h2>Forza delle valute</h2><span class="hint">macro + COT, da −10 a +10</span></div>
+      <div>${ranks.map((r, i) => { const w = Math.min(50, Math.abs(r.v) / 10 * 50); return `<div class="str-row" data-open="${r.c}"><div class="c"><span class="rank">${i + 1}</span>${flag(r.c)}${r.c}</div><div class="str-bar"><span class="${r.v >= 0 ? "pos" : "neg"}" style="width:${w}%"></span></div><div class="v ${r.v > 0 ? "up" : r.v < 0 ? "dn" : ""}">${sgn(r.v)}</div><div class="muted" style="font-size:11.5px;text-align:right">COT ${r.cot ? sgn(r.cot.score) : "—"}</div></div>`; }).join("")}</div>
+      ${(() => { const L = ["Molto ribassista", "Ribassista", "Neutrale", "Rialzista", "Molto rialzista"], col = ["#ee4637", "#f7a197", "#e2e2dc", "#7fd9ad", "#12a568"]; const n = L.map((l) => fx.filter((x) => x.bias === l).length);
+        return `<div class="eyebrow" style="margin-top:20px">Le ${fx.length} coppie forex per bias</div><div style="display:flex;height:14px;border-radius:999px;overflow:hidden;gap:3px">${n.map((k, i) => k ? `<span style="flex:${k};background:${col[i]};border-radius:999px" title="${L[i]}: ${k}"></span>` : "").join("")}</div>
+        <div class="legend" style="justify-content:space-between">${n.map((k, i) => `<span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:${col[i]}"></span>${L[i]} <b class="num" style="color:var(--ink)">${k}</b></span>`).join("")}</div>`; })()}
+    </div>
+    <div class="card"><div class="card-h"><h2>Setup più forti</h2><span class="hint">andamento dello score, ultimi 6 mesi</span></div>
+      <div class="setups"><div><div class="col-l up">Rialzisti</div><div class="grid" style="gap:10px">${bulls.map((x) => setup(x, "bull")).join("")}</div></div>
+      <div><div class="col-l dn">Ribassisti</div><div class="grid" style="gap:10px">${bears.map((x) => setup(x, "bear")).join("")}</div></div></div>
+    </div>
   </div>
-  <div class="card">
-      <div class="card-h"><h2>Bias per dato</h2>
-        <div class="seg" id="btabs">${Object.keys(counts).map((k) => `<button data-t="${k}" class="${S.boardTab === k ? "on" : ""}">${TYPE_LABEL[k]}<span class="c">${counts[k]}</span></button>`).join("")}</div>
-      </div>
-      <div class="tbl-wrap" id="btable"></div>
-      <div class="legend">Ribassista ${["sm2", "sm1", "s0", "s1", "s2"].map((c, i) => `<span class="cell ${c}">${sgn(i - 2)}</span>`).join("")} Rialzista <span style="margin-left:auto">Confronto con il dato precedente · clicca una riga per i dettagli</span></div>
+  <div class="card mt">
+    <div class="card-h"><h2>Mercati</h2>
+      <div class="ctl"><div class="seg" id="btabs">${Object.keys(counts).map((k) => `<button data-t="${k}" class="${S.boardTab === k ? "on" : ""}">${TYPE_LABEL[k]}<span class="c">${counts[k]}</span></button>`).join("")}</div>
+      <div class="seg" id="bview" style="${S.boardTab === "index" || S.boardTab === "commodity" ? "display:none" : ""}"><button data-v="sum" class="${S.view !== "grid" ? "on" : ""}">Sintesi</button><button data-v="grid" class="${S.view === "grid" ? "on" : ""}">Dato per dato</button></div></div>
+    </div>
+    <div class="tbl-wrap" id="btable"></div>
   </div>
-  <div class="grid g-board" style="margin-top:18px">
-    <div id="detail"></div>
-    <div class="card">
-      <div class="card-h"><h2>Ogni cross</h2><span class="hint">riga contro colonna</span></div>
-      <div class="tbl-wrap" id="matrix"></div>
-      <div class="legend">Ribassista ${["sm2", "sm1", "s0", "s1", "s2"].map((c) => `<span class="cell ${c}">&nbsp;</span>`).join("")} Rialzista</div>
+  <div class="grid g-2 mt">
+    <div class="card"><div class="card-h"><h2>Mappa dei cross</h2><span class="hint">valuta in riga contro valuta in colonna</span></div><div class="tbl-wrap" id="matrix"></div></div>
+    <div class="card"><div class="card-h"><h2>Cambiamenti della settimana</h2><span class="hint">variazione dello score in 7 giorni</span></div>
+      <table class="list"><tbody>${movers.map((x) => `<tr data-open="${x.id}"><td><div class="mk">${x.base ? flags(x.base, x.quote) : ""}${esc(x.name)}</div></td><td>${sbar(x.total, x.max)}</td><td class="r">${arrow(x.chg["1w"])}</td></tr>`).join("") || `<tr><td class="muted">Nessuna variazione questa settimana</td></tr>`}</tbody></table>
     </div>
   </div>`;
-  $$("[data-go]").forEach((k) => k.onclick = () => location.hash = `pair-${k.dataset.go}`);
-  $$("#btabs button").forEach((b) => b.onclick = () => { S.boardTab = b.dataset.t; S.sel = null; S.sort = 0; renderBoard(); });
-  drawBoardTable(); drawMatrix(); drawDetail();
+  $$("[data-open]").forEach((k) => k.onclick = () => openDrawer(k.dataset.open));
+  $$("#btabs button").forEach((b) => b.onclick = () => { S.boardTab = b.dataset.t; S.sort = 0; $$("#btabs button").forEach((x) => x.classList.toggle("on", x === b)); $("#bview").style.display = (S.boardTab === "index" || S.boardTab === "commodity") ? "none" : ""; drawBoardTable(); });
+  $$("#bview button").forEach((b) => b.onclick = () => { S.view = b.dataset.v; $$("#bview button").forEach((x) => x.classList.toggle("on", x === b)); drawBoardTable(); });
+  drawBoardTable(); drawMatrix();
+}
+
+function boardRows(tab) {
+  const B = S.board, M = S.meta;
+  if (tab === "ccy") return M.currencies.map((c) => { const r = B.currencies[c]; const cot = r.cot ? r.cot.score : null; const total = r.total + (cot || 0); const ind = {}; M.indicators.forEach((m) => ind[m.id] = r.ind[m.id] ? r.ind[m.id].score : null); return { id: c, ccy: true, c, name: r.name, ind, cats: r.cats, cot, total, max: 10, bias: biasOf(total, 10) }; });
+  return M.groups[tab].map((id) => ({ id, ...B.instruments[id] }));
 }
 
 function drawBoardTable() {
-  const M = S.meta, tab = S.boardTab;
+  const M = S.meta, tab = S.boardTab, el = $("#btable");
   let rows = boardRows(tab);
   if (S.sort) rows = [...rows].sort((a, b) => S.sort * (b.total - a.total));
-  if (!S.sel || !rows.find((r) => r.id === S.sel)) S.sel = rows[0] && rows[0].id;
-  const cats = M.categories.map(([id, label]) => ({ id, label, inds: M.indicators.filter((m) => m.cat === id) }));
-  let h = `<table class="t"><thead><tr><th></th><th></th><th></th><th class="sep"></th>`;
-  cats.forEach((c) => h += `<th class="grp" colspan="${c.inds.length}">${c.label}</th><th class="sep"></th>`);
-  h += `<th class="grp" colspan="2">Flussi</th></tr><tr><th class="l">Mercato</th><th id="sortT" style="cursor:pointer">Totale ${S.sort === 1 ? "↓" : S.sort === -1 ? "↑" : "↕"}</th><th class="l">Bias</th><th class="sep"></th>`;
-  cats.forEach((c) => { c.inds.forEach((m) => h += `<th title="${esc(m.label)}">${esc(m.short)}</th>`); h += `<th class="sep"></th>`; });
-  h += `<th>COT</th><th>Stag.</th></tr></thead><tbody>`;
-  rows.forEach((r) => {
-    h += `<tr data-id="${r.id}" class="${r.id === S.sel ? "sel" : ""}"><td class="name">${r.label}${r.sub ? `<small>${esc(r.sub)}</small>` : ""}</td><td>${tcell(r.total, r.max)}</td><td class="l">${pill(r.bias)}</td><td class="sep"></td>`;
-    cats.forEach((c) => { c.inds.forEach((m) => h += `<td>${r.noMacro ? cell(null) : cell(r.ind[m.id])}</td>`); h += `<td class="sep"></td>`; });
-    h += `<td>${cell(r.cot)}</td><td>${r.ccy ? cell(null) : cell(r.season)}</td></tr>`;
-  });
-  $("#btable").innerHTML = h + "</tbody></table>";
-  $$("#btable tbody tr").forEach((tr) => tr.onclick = () => { S.sel = tr.dataset.id; $$("#btable tr.sel").forEach((x) => x.classList.remove("sel")); tr.classList.add("sel"); drawDetail(true); });
-  $("#sortT").onclick = () => { S.sort = S.sort === 0 ? 1 : S.sort === 1 ? -1 : 0; drawBoardTable(); };
+  const sortTh = `<th class="th-sort" id="sortT">Score ${S.sort === 1 ? "↓" : S.sort === -1 ? "↑" : "↕"}</th>`;
+  const grid = S.view === "grid" && tab !== "index" && tab !== "commodity";
+  let h;
+  if (grid) {
+    const cats = M.categories.map(([id, label]) => ({ id, label, inds: M.indicators.filter((m) => m.cat === id) }));
+    h = `<table class="dg"><thead><tr><th></th><th></th>${cats.map((c) => `<th class="gap"></th><th class="grp" colspan="${c.inds.length}"><span>${c.label}</span></th>`).join("")}<th class="gap"></th><th class="grp" colspan="2"><span>Flussi</span></th></tr>
+      <tr><th class="l">Mercato</th><th class="l th-sort" id="sortT">Score ${S.sort === 1 ? "↓" : S.sort === -1 ? "↑" : "↕"}</th>${cats.map((c) => `<th class="gap"></th>` + c.inds.map((m) => `<th title="${esc(m.label)}">${esc(m.short)}</th>`).join("")).join("")}<th class="gap"></th><th>COT</th><th>Stag.</th></tr></thead><tbody>`;
+    rows.forEach((r) => {
+      h += `<tr data-id="${r.id}"><td class="l"><div class="mk">${r.ccy ? flags(r.c) + r.c : flags(r.base, r.quote) + esc(r.name)}</div></td><td class="l" style="min-width:150px">${sbar(r.total, r.max)}</td>`;
+      cats.forEach((c) => { h += `<td class="gap"></td>` + c.inds.map((m) => `<td>${dot(r.ind ? r.ind[m.id] : null)}</td>`).join(""); });
+      h += `<td class="gap"></td><td>${dot(r.cot)}</td><td>${r.ccy ? dot(null) : dot(r.season)}</td></tr>`;
+    });
+    h += `</tbody></table><div class="legend">${[-2, -1, 0, 1, 2].map((v) => `${dot(v)}`).join("")} <span>da ribassista a rialzista · ogni dato confrontato con il precedente · trattino = dato non disponibile</span></div>`;
+  } else if (tab === "ccy") {
+    h = `<table class="list"><thead><tr><th>Valuta</th>${sortTh}<th>Bias</th>${M.categories.map(([, l]) => `<th style="text-align:center" class="col-hide">${l}</th>`).join("")}<th style="text-align:center">COT</th></tr></thead><tbody>`;
+    rows.forEach((r) => { h += `<tr data-id="${r.id}"><td><div class="mk">${flags(r.c)}<div>${r.c}<small>${esc(r.name)}</small></div></div></td><td style="min-width:200px">${sbar(r.total, r.max)}</td><td>${pill(r.bias)}</td>${M.categories.map(([c]) => `<td style="text-align:center" class="col-hide">${dot(r.cats[c])}</td>`).join("")}<td style="text-align:center">${dot(r.cot)}</td></tr>`; });
+    h += `</tbody></table>`;
+  } else {
+    const fx = tab === "major" || tab === "cross";
+    h = `<table class="list"><thead><tr><th>Mercato</th>${sortTh}<th>Bias</th><th class="col-hide">Componenti</th><th class="col-hide">Trend 6 mesi</th><th class="r">1 sett.</th><th class="r col-hide">Prezzo</th><th class="r">1 giorno</th></tr></thead><tbody>`;
+    rows.forEach((r) => {
+      const comp = (fx ? [["M", r.macro]] : []).concat([["C", r.cot], ["S", r.season]]);
+      h += `<tr data-id="${r.id}"><td><div class="mk">${fx ? flags(r.base, r.quote) : ""}<div>${esc(r.name)}${fx ? "" : `<small>${r.season_detail ? `stagionalità ${r.season_detail.winrate}% anni positivi` : ""}</small>`}</div></div></td>
+        <td style="min-width:200px">${sbar(r.total, r.max)}</td><td>${pill(r.bias)}</td>
+        <td class="col-hide"><span class="comp">${comp.map(([k, v]) => `<span class="${v > 0 ? "up" : v < 0 ? "dn" : ""}"><i>${k}</i>${v == null ? "—" : sgn(v)}</span>`).join("")}</span></td>
+        <td class="col-hide" style="width:130px">${sparkW(r.spark, 28)}</td><td class="r">${arrow(r.chg ? r.chg["1w"] : 0)}</td>
+        <td class="r num col-hide">${nf(r.last, digits(r.id))}</td><td class="r num ${r.chg_1d >= 0 ? "up" : "dn"}">${sgnf(r.chg_1d)}%</td></tr>`;
+    });
+    h += `</tbody></table><div class="legend"><span class="comp"><span><i>M</i>macro</span><span><i>C</i>COT</span><span><i>S</i>stagionalità</span></span> <span>clicca una riga per il dettaglio</span></div>`;
+  }
+  el.innerHTML = h;
+  $$("tbody tr[data-id]", el).forEach((tr) => tr.onclick = () => openDrawer(tr.dataset.id));
+  const st = $("#sortT"); if (st) st.onclick = () => { S.sort = S.sort === 0 ? 1 : S.sort === 1 ? -1 : 0; drawBoardTable(); };
 }
 
 function drawMatrix() {
-  const C = S.meta.currencies, mx = S.board.matrix;
-  let h = `<table class="t mx"><thead><tr><th></th>${C.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>`;
+  const C = S.meta.currencies, mx = S.board.matrix, max = S.meta.max_fx;
+  let h = `<table class="bm"><thead><tr><th></th>${C.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>`;
   C.forEach((b) => {
-    h += `<tr><th class="rh">${flag(b)}${b}</th>`;
-    C.forEach((q) => { if (b === q) { h += `<td><div class="cell sn">·</div></td>`; return; } const v = mx[b][q]; const id = S.board.instruments[b + q] ? b + q : q + b; h += `<td data-p="${id}" title="${b}/${q}">${tcell(v, S.meta.max_fx)}</td>`; });
+    h += `<tr><th class="rh">${b}</th>`;
+    C.forEach((q) => {
+      if (b === q) { h += `<td class="diag"></td>`; return; }
+      const v = mx[b][q], id = S.board.instruments[b + q] ? b + q : q + b;
+      const sz = v == null ? 0 : Math.round(16 + Math.min(1, Math.abs(v) / (max * .5)) * 20);
+      h += `<td data-p="${id}" title="${b}/${q}: ${sgn(v)}">${v == null ? "" : `<span class="bub ${v > 0 ? "pos" : v < 0 ? "neg" : "zero"}" style="width:${sz}px;height:${sz}px;opacity:${.45 + Math.min(1, Math.abs(v) / (max * .5)) * .55}">${sz >= 22 ? sgn(v) : ""}</span>`}</td>`;
+    });
     h += "</tr>";
   });
-  $("#matrix").innerHTML = h + "</tbody></table>";
-  $$("#matrix td[data-p]").forEach((td) => td.onclick = () => location.hash = `pair-${td.dataset.p}`);
+  $("#matrix").innerHTML = h + `</tbody></table><div class="legend" style="justify-content:center"><span class="bub neg" style="width:14px;height:14px"></span> ribassista <span class="bub zero" style="width:14px;height:14px"></span> neutrale <span class="bub pos" style="width:14px;height:14px"></span> rialzista · più grande = più forte</div>`;
+  $$("#matrix td[data-p]").forEach((td) => td.onclick = () => openDrawer(td.dataset.p));
 }
 
-async function drawDetail(scroll) {
-  const box = $("#detail"); if (!box || !S.sel) return;
-  const B = S.board, M = S.meta, id = S.sel;
+/* ---------- pannello laterale */
+function closeDrawer() { const d = $("#drawer"); if (d) { d.classList.remove("open"); $("#scrim").classList.remove("open"); } }
+async function openDrawer(id) {
+  const B = S.board, M = S.meta, d = $("#drawer");
+  S.sel = id;
   if (B.currencies[id]) {
-    const r = B.currencies[id], cot = r.cot;
-    const total = r.total + (cot ? cot.score : 0);
+    const r = B.currencies[id], cot = r.cot, total = r.total + (cot ? cot.score : 0);
     const pairs = Object.entries(B.instruments).filter(([, x]) => x.base === id || x.quote === id).map(([pid, x]) => ({ pid, other: x.base === id ? x.quote : x.base, v: x.base === id ? x.total : -x.total, max: x.max })).sort((a, b) => b.v - a.v);
-    box.innerHTML = `<div class="card detail"><div class="detail-grid">
-      <div><div class="card-h"><h2>${flag(id)}${id} · ${esc(r.name)}</h2></div>
-        <div style="display:flex;align-items:center;gap:12px"><div class="big num">${sgn(total)}<small>su ±10</small></div>${pill(biasOf(total, 10))}</div>
-        <div class="rows">${M.categories.map(([c, l]) => `<div class="rowx"><span>${l}</span>${cell(r.cats[c])}</div>`).join("")}<div class="rowx"><span>Momentum COT</span>${cell(cot ? cot.score : null)}</div></div>
-      </div>
-      <div><div class="card-h"><h2>Dati macro</h2><span class="hint">attuale · precedente</span></div>${indTable(r)}</div>
-      <div><div class="card-h"><h2>Coppie con ${id}</h2><span class="hint">${id} come base</span></div>
-        <div class="tbl-wrap"><table class="mini-t"><tbody>${pairs.map((p) => `<tr style="cursor:pointer" onclick="location.hash='pair-${p.pid}'"><td>${flag(p.other)}${id}/${p.other}</td><td>${tcell(p.v, p.max)}</td><td style="width:140px">${pill(biasOf(p.v, p.max))}</td></tr>`).join("")}</tbody></table></div>
-      </div></div></div>`;
+    d.innerHTML = `<button class="x" onclick="closeDrawer()">✕</button>
+      <div class="eyebrow">Valuta</div><h3>${flags(id)}${id} · ${esc(r.name)}</h3>
+      <div class="card mt" style="text-align:center">${gauge(total, 10)}<div style="margin-top:4px">${pill(biasOf(total, 10))}</div>
+        <div class="kv" style="grid-template-columns:repeat(5,1fr);margin-top:14px">${M.categories.map(([c, l]) => `<div><div class="l">${l}</div><div class="v ${r.cats[c] > 0 ? "up" : r.cats[c] < 0 ? "dn" : ""}">${sgn(r.cats[c])}</div></div>`).join("")}<div><div class="l">COT</div><div class="v ${cot && cot.score > 0 ? "up" : cot && cot.score < 0 ? "dn" : ""}">${cot ? sgn(cot.score) : "—"}</div></div></div></div>
+      <div class="card mt"><div class="card-h"><h2>Dati macro</h2><span class="hint">attuale · precedente</span></div>${indTable(r)}</div>
+      <div class="card mt"><div class="card-h"><h2>Coppie con ${id}</h2><span class="hint">${id} come base</span></div><table class="list"><tbody>${pairs.map((p) => `<tr onclick="location.hash='pair-${p.pid}'"><td><div class="mk">${flags(id, p.other)}${id}/${p.other}</div></td><td style="min-width:170px">${sbar(p.v, p.max)}</td></tr>`).join("")}</tbody></table></div>`;
   } else {
-    const r = B.instruments[id];
-    const fx = !!r.base;
-    box.innerHTML = `<div class="card detail"><div class="detail-grid">
-      <div><div class="card-h"><h2>${fx ? flag(r.base) : ""}${esc(r.name)}</h2>${pill(r.bias)}</div>
-        <div class="big num">${sgn(r.total)}<small>su ±${r.max}</small></div>
-        <div class="rows">
-          <div class="rowx"><span>Dati macro</span>${cell(r.macro)}</div>
-          <div class="rowx"><span>Momentum COT</span>${cell(r.cot)}</div>
-          <div class="rowx"><span>Stagionalità</span>${cell(r.season)}</div>
-          <div class="rowx"><span>Var. 1 sett. / 1 mese</span><span class="num">${sgn(r.chg["1w"])} / ${sgn(r.chg["1m"])}</span></div>
-        </div>
-        <div style="margin-top:16px"><a class="btn" href="#pair-${id}">Apri l'analisi di ${esc(r.name)} →</a></div>
+    const r = B.instruments[id], fx = !!r.base;
+    d.innerHTML = `<button class="x" onclick="closeDrawer()">✕</button>
+      <div class="eyebrow">${TYPE_LABEL[r.type]}</div><h3>${fx ? flags(r.base, r.quote) : ""}${esc(r.name)}</h3>
+      <div class="card mt" style="text-align:center">${gauge(r.total, r.max)}<div style="margin-top:4px">${pill(r.bias)}</div>
+        <div class="kv" style="margin-top:14px"><div><div class="l">Macro</div><div class="v ${r.macro > 0 ? "up" : r.macro < 0 ? "dn" : ""}">${r.macro == null ? "—" : sgn(r.macro)}</div></div><div><div class="l">COT</div><div class="v ${r.cot > 0 ? "up" : r.cot < 0 ? "dn" : ""}">${sgn(r.cot)}</div></div><div><div class="l">Stagionalità</div><div class="v ${r.season > 0 ? "up" : r.season < 0 ? "dn" : ""}">${sgn(r.season)}</div></div></div>
+        ${fx ? `<div class="vs mt"><div class="side-c">${flag(r.base)}${r.base} <span class="num ${B.currencies[r.base].total >= 0 ? "up" : "dn"}">${sgn(B.currencies[r.base].total)}</span></div><span class="vsx">VS</span><div class="side-c"><span class="num ${B.currencies[r.quote].total >= 0 ? "up" : "dn"}">${sgn(B.currencies[r.quote].total)}</span> ${r.quote}${flag(r.quote)}</div></div>` : ""}
       </div>
-      <div>${fx ? `<div class="card-h"><h2>Dato per dato</h2><span class="hint">${r.base} · ${r.quote} · coppia</span></div>${pairMiniTable(r)}` : seasonCotMini(r)}</div>
-      <div><div class="card-h"><h2>Prezzo giornaliero</h2><div class="seg" id="dprange">${["1M", "3M", "6M", "1A"].map((k) => `<button data-k="${k}" class="${S.sum.prange === k ? "on" : ""}">${k}</button>`).join("")}</div></div>
-        <div class="stat-line"><span>Ultimo<b>${nf(r.last, digits(id))}</b></span><span>1g<b class="${r.chg_1d >= 0 ? "up" : "dn"}">${sgnf(r.chg_1d)}%</b></span></div>
-        <div id="dprice"></div></div>
-    </div></div>`;
-    const inst = await getInst(id).catch(() => null);
-    if (inst && inst.prices && S.sel === id) {
-      const draw = () => priceChart($("#dprice"), inst, S.sum.prange, id, 220);
-      draw();
-      $$("#dprange button").forEach((b) => b.onclick = () => { S.sum.prange = b.dataset.k; $$("#dprange button").forEach((x) => x.classList.toggle("on", x === b)); draw(); });
-    }
+      <div class="card mt"><div class="card-h"><h2>Prezzo</h2><div class="seg" id="dprange">${["1M", "3M", "6M", "1A"].map((k) => `<button data-k="${k}" class="${S.sum.prange === k ? "on" : ""}">${k}</button>`).join("")}</div></div>
+        <div class="stat-line"><span>Ultimo<b>${nf(r.last, digits(id))}</b></span><span>1 giorno<b class="${r.chg_1d >= 0 ? "up" : "dn"}">${sgnf(r.chg_1d)}%</b></span></div><div id="dprice"></div></div>
+      <div class="card mt">${fx ? `<div class="card-h"><h2>Dato per dato</h2><span class="hint">${r.base} · ${r.quote} · coppia</span></div>${pairMiniTable(r)}` : seasonCotMini(r)}</div>
+      <div style="margin-top:16px;display:flex;justify-content:flex-end"><a class="btn" href="#pair-${id}">Apri l'analisi completa <span class="arr">→</span></a></div>`;
+    getInst(id).then((inst) => {
+      if (!inst || !inst.prices || S.sel !== id) return;
+      const draw = () => priceChart($("#dprice"), inst, S.sum.prange, id, 200);
+      draw(); $$("#dprange button").forEach((b) => b.onclick = () => { S.sum.prange = b.dataset.k; $$("#dprange button").forEach((x) => x.classList.toggle("on", x === b)); draw(); });
+    }).catch(() => {});
   }
-  if (scroll) box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  d.scrollTop = 0; d.classList.add("open"); $("#scrim").classList.add("open");
 }
 
 function fmtVal(v, m) { if (v == null) return "—"; const d = m.unit === "k" ? 0 : m.unit === "idx" ? 1 : 2; return nf(v, d) + (m.unit.startsWith("%") ? "%" : ""); }
@@ -329,18 +373,18 @@ function indTable(r) {
   M.categories.forEach(([c, l]) => {
     const list = M.indicators.filter((m) => m.cat === c && r.ind[m.id]); if (!list.length) return;
     h += `<tr class="cat"><td colspan="5">${l}</td></tr>`;
-    list.forEach((m) => { const x = r.ind[m.id]; h += `<tr><td title="${esc(x.source || "")}">${esc(m.label)}</td><td class="muted num">${esc(x.period)}</td><td class="num">${fmtVal(x.actual, m)}</td><td class="num muted">${fmtVal(x.previous, m)}</td><td>${cell(x.score)}</td></tr>`; });
+    list.forEach((m) => { const x = r.ind[m.id]; h += `<tr><td title="${esc(x.source || "")}">${esc(m.label)}</td><td class="muted num">${esc(x.period)}</td><td class="num">${fmtVal(x.actual, m)}</td><td class="num muted">${fmtVal(x.previous, m)}</td><td>${dot(x.score)}</td></tr>`; });
   });
   return h + "</tbody></table>";
 }
 
 function pairMiniTable(r) {
   const M = S.meta, cb = S.board.currencies[r.base], cq = S.board.currencies[r.quote];
-  let h = `<table class="mini-t"><thead><tr><th>Dato</th><th>${flag(r.base)}</th><th>${flag(r.quote)}</th><th>Coppia</th></tr></thead><tbody>`;
+  let h = `<table class="mini-t"><thead><tr><th>Dato</th><th>${r.base}</th><th>${r.quote}</th><th>Coppia</th></tr></thead><tbody>`;
   M.categories.forEach(([c, l]) => {
     const list = M.indicators.filter((m) => m.cat === c && (cb.ind[m.id] || cq.ind[m.id])); if (!list.length) return;
     h += `<tr class="cat"><td colspan="4">${l}</td></tr>`;
-    list.forEach((m) => h += `<tr><td>${esc(m.label)}</td><td>${cell(cb.ind[m.id] ? cb.ind[m.id].score : null)}</td><td>${cell(cq.ind[m.id] ? cq.ind[m.id].score : null)}</td><td>${cell(r.ind[m.id])}</td></tr>`);
+    list.forEach((m) => h += `<tr><td>${esc(m.label)}</td><td>${dot(cb.ind[m.id] ? cb.ind[m.id].score : null)}</td><td>${dot(cq.ind[m.id] ? cq.ind[m.id].score : null)}</td><td>${dot(r.ind[m.id])}</td></tr>`);
   });
   return h + "</tbody></table>";
 }
@@ -362,7 +406,7 @@ function sliceRange(d, key) {
 }
 function priceChart(el, inst, range, id, height = 260) {
   const p = inst.prices, i0 = sliceRange(p.d, range), d = p.d.slice(i0), c = p.c.slice(i0), dg = digits(id);
-  lineChart(el, { n: d.length, x: d.map(fmtDate), ticks: dateTicks(d), height, series: [{ name: "Chiusura", values: c, color: "#4f46e5", area: true, fmt: (v) => nf(v, dg) }] });
+  lineChart(el, { n: d.length, x: d.map(fmtDate), ticks: dateTicks(d), height, series: [{ name: "Chiusura", values: c, color: "#2e6ae6", area: true, fmt: (v) => nf(v, dg) }] });
 }
 
 /* ====================================================================== pair page */
@@ -371,7 +415,10 @@ async function renderPair(id) {
   if (!r) { $("#app").innerHTML = `<div class="card empty">Mercato "${esc(id)}" non trovato. <a class="btn ghost" href="#board">Torna alla board</a></div>`; return; }
   const sub = r.base ? `${S.meta.currency_names[r.base]} contro ${S.meta.currency_names[r.quote]}` : TYPE_LABEL[r.type];
   $("#app").innerHTML = `
-   <div class="page-head"><div><h1>${r.base ? flag(r.base) + flag(r.quote) : ""}${esc(r.name)}</h1><div class="sub">${esc(sub)}</div></div><div style="display:flex;gap:10px;align-items:center"><span class="stamp">Punteggi al ${fmtDate(B.as_of)}</span><a class="btn ghost" href="#board">← Board</a></div></div>
+   <div class="pair-hero ${r.total / r.max >= .12 ? "bull" : r.total / r.max <= -.12 ? "bear" : ""}"><div class="row">
+     <div><div class="eyebrow"><a href="#board" class="muted">← Bias board</a> · ${TYPE_LABEL[r.type]}</div><h1>${r.base ? flags(r.base, r.quote) : ""}${esc(r.name)}</h1><div class="sub">${esc(sub)}</div></div>
+     <div class="stats"><div>Score<b class="${r.total > 0 ? "up" : r.total < 0 ? "dn" : ""}">${sgn(r.total)} <span class="muted" style="font-size:12px">/ ${r.max}</span></b></div><div>Bias<b style="font-family:Inter;font-size:14px;margin-top:3px">${pill(r.bias)}</b></div><div>Ultimo prezzo<b>${nf(r.last, digits(id))}</b></div><div>1 giorno<b class="${r.chg_1d >= 0 ? "up" : "dn"}">${sgnf(r.chg_1d)}%</b></div><div>Score 1 sett.<b>${arrow(r.chg ? r.chg["1w"] : 0)}</b></div></div>
+   </div></div>
    <div class="tabs" id="ptabs">
      <button data-t="summary">Panoramica ${tcell(r.total, r.max)}</button>
      <button data-t="cot">COT ${cell(r.cot)}</button>
@@ -395,15 +442,16 @@ function pairSummary(id, r, inst) {
   <div class="grid g-sum">
     <div class="card">
       <div class="card-h"><h2>Score composito</h2>${pill(r.bias)}</div>
-      <div class="big num">${sgn(r.total)}<small>su ±${r.max}</small></div>
-      ${fx ? `<div class="ccy-row"><div class="ccy">${flag(r.base)}${r.base}${cell(cb.total)}</div><div class="ccy">${flag(r.quote)}${r.quote}${cell(cq.total)}</div></div>` : ""}
-      <div class="score-tiles">
-        <div class="tile"><div class="l">Macro</div><div class="v ${r.macro > 0 ? "up" : r.macro < 0 ? "dn" : ""}">${r.macro == null ? "—" : sgn(r.macro)}</div></div>
-        <div class="tile"><div class="l">COT</div><div class="v ${r.cot > 0 ? "up" : r.cot < 0 ? "dn" : ""}">${sgn(r.cot)}</div></div>
-        <div class="tile"><div class="l">Stagionalità</div><div class="v ${r.season > 0 ? "up" : r.season < 0 ? "dn" : ""}">${sgn(r.season)}</div></div>
+      <div style="text-align:center">${gauge(r.total, r.max, 280)}</div>
+      ${fx ? `<div class="vs mt"><div class="side-c">${flag(r.base)}${r.base} <span class="num ${cb.total >= 0 ? "up" : "dn"}">${sgn(cb.total)}</span></div><span class="vsx">VS</span><div class="side-c"><span class="num ${cq.total >= 0 ? "up" : "dn"}">${sgn(cq.total)}</span> ${r.quote}${flag(r.quote)}</div></div>` : ""}
+      <div class="mini-bars mt">
+        ${fx ? `<div class="mb"><span>Macro</span>${sbar(r.macro, 16)}</div>` : ""}
+        <div class="mb"><span>COT</span>${sbar(r.cot, fx ? 4 : 2)}</div>
+        <div class="mb"><span>Stagionalità</span>${sbar(r.season, 2)}</div>
       </div>
-      ${fx ? `<div class="cats">${S.meta.categories.map(([c, l]) => `<div class="tile"><div class="l">${l}</div>${cell(r.cats[c])}</div>`).join("")}</div>` : ""}
-      <div class="score-tiles">${[["1w", "Var. 1 sett."], ["1m", "Var. 1 mese"], ["3m", "Var. 3 mesi"]].map(([k, l]) => `<div class="tile"><div class="l">${l}</div>${cell(r.chg[k] === 0 ? 0 : Math.sign(r.chg[k]) * Math.min(2, Math.abs(r.chg[k])), sgn(r.chg[k]))}</div>`).join("")}</div>
+      ${fx ? `<div class="eyebrow" style="margin-top:18px">Macro per area</div><div class="kv" style="grid-template-columns:repeat(4,1fr)">${S.meta.categories.map(([c, l]) => `<div><div class="l">${l}</div><div class="v ${r.cats[c] > 0 ? "up" : r.cats[c] < 0 ? "dn" : ""}">${sgn(r.cats[c])}</div></div>`).join("")}</div>` : ""}
+      <div class="eyebrow" style="margin-top:18px">Variazione dello score</div>
+      <div class="kv">${[["1w", "1 settimana"], ["1m", "1 mese"], ["3m", "3 mesi"]].map(([k, l]) => `<div><div class="l">${l}</div><div class="v">${arrow(r.chg[k])}</div></div>`).join("")}</div>
     </div>
     <div class="card">
       <div class="card-h"><h2>Score nel tempo</h2><div class="seg" id="srange">${["3M", "6M", "1A", "2A"].map((k) => `<button data-k="${k}" class="${S.sum.range === k ? "on" : ""}">${k}</button>`).join("")}</div></div>
@@ -415,7 +463,7 @@ function pairSummary(id, r, inst) {
   ${fx ? `<div class="card" style="margin-top:18px"><div class="card-h"><h2>Dato per dato</h2><span class="hint">ogni dato confrontato con il precedente</span></div><div class="tbl-wrap">${releaseTable(r)}</div></div>` : ""}
   <div class="card" style="margin-top:18px"><div class="card-h"><h2>Prezzo giornaliero</h2><div class="seg" id="prange">${["1M", "3M", "6M", "1A", "5A"].map((k) => `<button data-k="${k}" class="${S.sum.prange === k ? "on" : ""}">${k}</button>`).join("")}</div></div><div id="pchart"></div></div>`;
 
-  const SER = [["total", "Totale", "#0f1222"], ["macro", "Macro", "#4f46e5"], ["cot", "COT", "#0ea5a4"], ["season", "Stagionalità", "#ec4899"], ["price", "Prezzo", "#f59e0b"]];
+  const SER = [["total", "Totale", "#14161b"], ["macro", "Macro", "#0f8a6a"], ["cot", "COT", "#7a3fd1"], ["season", "Stagionalità", "#e27b1f"], ["price", "Prezzo", "#2e6ae6"]];
   const drawScore = () => {
     if (!inst) return;
     const H = inst.history, n = H.d.length, k = { "3M": 14, "6M": 27, "1A": 53, "2A": n }[S.sum.range];
@@ -433,7 +481,7 @@ function pairSummary(id, r, inst) {
     $("#sstat").innerHTML = `<span>Ora<b>${sgn(tot.at(-1))}</b></span><span>Media<b>${sgnf(tot.reduce((a, b) => a + b, 0) / tot.length, 1)}</b></span><span>Massimo<b>${sgn(Math.max(...tot))}</b></span><span>Minimo<b>${sgn(Math.min(...tot))}</b></span>`;
     const t = r.max * .35, t2 = r.max * .12;
     lineChart($("#schart"), { n: d.length, x: d.map(fmtDate), ticks: dateTicks(d), height: 300, zero: true, series, yFmt: sgn,
-      refLines: [{ v: t2, label: "Rialzista", color: "#0e9f6e" }, { v: -t2, label: "Ribassista", color: "#e5484d" }] });
+      refLines: [{ v: t2, label: "Rialzista", color: "#12a568" }, { v: -t2, label: "Ribassista", color: "#ee4637" }] });
   };
   $("#stog").innerHTML = SER.map(([k, n, c]) => `<button class="chip ${S.sum.show[k] ? "" : "off"}" data-k="${k}"><i style="background:${c}"></i>${n}</button>`).join("");
   $$("#stog .chip").forEach((b) => b.onclick = () => { S.sum.show[b.dataset.k] ^= 1; b.classList.toggle("off"); drawScore(); });
@@ -453,8 +501,8 @@ function releaseTable(r) {
     h += `<tr class="cat"><td colspan="10">${l}</td></tr>`;
     list.forEach((m) => {
       const a = cb.ind[m.id], b = cq.ind[m.id];
-      const part = (x, pad) => x ? `<td class="muted num" ${pad ? 'style="padding-left:24px"' : ""}>${esc(x.period)}</td><td class="num">${fmtVal(x.actual, m)}</td><td class="num muted">${fmtVal(x.previous, m)}</td><td>${cell(x.score)}</td>` : `<td ${pad ? 'style="padding-left:24px"' : ""} class="muted">—</td><td></td><td></td><td>${cell(null)}</td>`;
-      h += `<tr><td>${esc(m.label)}</td>${part(a)}${part(b, 1)}<td style="padding-left:24px">${cell(r.ind[m.id])}</td></tr>`;
+      const part = (x, pad) => x ? `<td class="muted num" ${pad ? 'style="padding-left:24px"' : ""}>${esc(x.period)}</td><td class="num">${fmtVal(x.actual, m)}</td><td class="num muted">${fmtVal(x.previous, m)}</td><td>${dot(x.score)}</td>` : `<td ${pad ? 'style="padding-left:24px"' : ""} class="muted">—</td><td></td><td></td><td>${dot(null)}</td>`;
+      h += `<tr><td>${esc(m.label)}</td>${part(a)}${part(b, 1)}<td style="padding-left:24px">${dot(r.ind[m.id])}</td></tr>`;
     });
   });
   return h + "</tbody></table>";
@@ -474,22 +522,18 @@ function cotCard(code, title) {
     rows += `<tr><td>${esc(g)}</td><td class="num">${nf(L, 0)}</td><td class="num">${nf(Sh, 0)}</td><td class="num ${n >= 0 ? "up" : "dn"}">${kfmt(n)}</td><td class="num ${wk >= 0 ? "up" : "dn"}">${kfmt(wk)}</td><td><div class="lsbar"><span style="width:${(L / tot) * 100}%"></span><span style="width:${(Sh / tot) * 100}%"></span></div></td></tr>`;
   });
   return `<div class="card">
-    <div class="cot-head"><div><h2 style="margin:0;font-size:15px">${title}</h2><div class="muted" style="font-size:12px">${esc(c.name)} · report del ${fmtDate(s.date)}</div></div>${cell(s.score)}</div>
-    <div style="display:flex;gap:28px;margin-top:14px;flex-wrap:wrap">
-      <div><div class="muted" style="font-size:12px">Netto speculativo</div><div class="cot-net ${s.net >= 0 ? "up" : "dn"}">${kfmt(s.net)}</div></div>
-      <div><div class="muted" style="font-size:12px">Questa settimana</div><div class="cot-net" style="font-size:18px;margin-top:6px">${kfmt(s.chg_1w)}</div></div>
-      <div><div class="muted" style="font-size:12px">4 settimane</div><div class="cot-net" style="font-size:18px;margin-top:6px">${kfmt(s.chg_4w)}</div></div>
-      <div><div class="muted" style="font-size:12px">Percentile 3 anni</div><div class="cot-net" style="font-size:18px;margin-top:6px">${s.pctile}°</div></div>
-    </div>
+    <div class="card-h" style="margin-bottom:4px"><div><h2 style="display:flex;align-items:center">${title}</h2><div class="muted" style="font-size:12px;margin-top:2px">${esc(c.name)} · report del ${fmtDate(s.date)}</div></div>${dot(s.score)}</div>
+    <div style="display:flex;align-items:baseline;gap:10px;margin-top:10px"><div class="cot-net ${s.net >= 0 ? "up" : "dn"}">${kfmt(s.net)}</div><span class="muted" style="font-size:12px">contratti netti speculativi</span></div>
+    <div class="cot-stats"><div><div class="l">Questa settimana</div><div class="v">${kfmt(s.chg_1w)}</div></div><div><div class="l">4 settimane</div><div class="v">${kfmt(s.chg_4w)}</div></div><div><div class="l">Percentile 3 anni</div><div class="v">${s.pctile}°</div></div><div><div class="l">Open interest</div><div class="v">${Math.round(c.oi[last] / 1000)}k</div></div></div>
     <div class="range"><i style="left:${pos}%"></i></div><div class="range-l"><span>min 52s ${kfmt(lo)}</span><span>max 52s ${kfmt(hi)}</span></div>
     <div class="muted" style="font-size:12px;margin:16px 0 4px">Netto speculativo, ultimi 3 anni</div><div data-cl="${code}"></div>
     <div class="muted" style="font-size:12px;margin:12px 0 4px">Variazione settimanale del netto, ultime 26 settimane</div><div data-cb="${code}"></div>
     <table class="mini-t" style="margin-top:12px"><thead><tr><th>Gruppo</th><th>Long</th><th>Short</th><th>Netto</th><th>Sett.</th><th>Long / short</th></tr></thead><tbody>${rows}</tbody></table>
-    <div class="muted" style="font-size:12px;margin-top:8px">Open interest ${nf(c.oi[last], 0)}</div>
+    
   </div>`;
 }
 function drawCotCharts() {
-  $$("[data-cl]").forEach((el) => { const c = S.cot[el.dataset.cl]; lineChart(el, { n: c.d.length, x: c.d.map(fmtDate), ticks: dateTicks(c.d), height: 170, zero: true, series: [{ name: "Netto", values: c.net_spec, color: "#4f46e5", area: true, fmt: kfmt }], yFmt: (v) => Math.abs(v) >= 1000 ? Math.round(v / 1000) + "k" : v }); });
+  $$("[data-cl]").forEach((el) => { const c = S.cot[el.dataset.cl]; lineChart(el, { n: c.d.length, x: c.d.map(fmtDate), ticks: dateTicks(c.d), height: 170, zero: true, series: [{ name: "Netto", values: c.net_spec, color: "#2e6ae6", area: true, fmt: kfmt }], yFmt: (v) => Math.abs(v) >= 1000 ? Math.round(v / 1000) + "k" : v }); });
   $$("[data-cb]").forEach((el) => { const c = S.cot[el.dataset.cb]; const n = c.net_spec; const ch = n.map((v, i) => i && v != null && n[i - 1] != null ? v - n[i - 1] : null).slice(-26); const d = c.d.slice(-26); barChart(el, { values: ch, labels: d.map((x, i) => i % 6 === 0 ? `${+x.slice(8)} ${MONTHS[+x.slice(5, 7) - 1]}` : ""), tips: d.map(fmtDate), fmt: (v) => Math.abs(v) >= 1000 ? Math.round(v / 1000) + "k" : Math.round(v) }); });
 }
 function pairCot(id, r) {
@@ -525,7 +569,7 @@ function seasonModel(inst) {
   return { p, cy, today, curve, avg, monthly, weekly, ys };
 }
 
-const LINES = [["cy", "Quest'anno", "#0f1222"], ["ly", "Anno scorso", "#94a3b8"], ["a5", "Media 5 anni", "#f59e0b"], ["a7", "Media 7 anni", "#8b5cf6"], ["a10", "Media 10 anni", "#0e9f6e"], ["a15", "Media 15 anni", "#4f46e5"], ["a20", "Media 20 anni", "#ec4899"]];
+const LINES = [["cy", "Quest'anno", "#14161b"], ["ly", "Anno scorso", "#b4b6bd"], ["a5", "Media 5 anni", "#e27b1f"], ["a7", "Media 7 anni", "#7a3fd1"], ["a10", "Media 10 anni", "#12a568"], ["a15", "Media 15 anni", "#2e6ae6"], ["a20", "Media 20 anni", "#c2306b"]];
 
 function pairSeason(id, r, inst) {
   if (!inst || !inst.prices) { $("#pbody").innerHTML = `<div class="card empty">Prezzi non disponibili</div>`; return; }
@@ -536,7 +580,7 @@ function pairSeason(id, r, inst) {
     <div class="card-h"><h2>Andamento stagionale</h2><div class="ctl" id="slines">${LINES.map(([k, n, c]) => `<button class="chip ${st.lines.has(k) ? "" : "off"}" data-k="${k}"><i style="background:${c}"></i>${n}</button>`).join("")}</div></div>
     <div class="season-grid">
       <div><div id="sc"></div><div class="muted" style="font-size:12px;margin-top:4px">Rendimento cumulato dall'inizio dell'anno. Trascina sul grafico per testare un periodo.</div></div>
-      <div class="side">
+      <div class="panel">
         <h4>Da inizio anno</h4><div id="ytd"></div>
         <h4 style="margin-top:18px">Prossimi ${S.meta.season_horizon} giorni</h4>
         <div class="li"><span>Anni positivi</span><b class="num">${sd ? sd.winrate + "%" : "—"}</b></div>
@@ -591,7 +635,7 @@ function pairSeason(id, r, inst) {
     }
     const dg = digits(id);
     const stats = [5, 7, 10, 15, 20].map((N) => { const rr = rows.slice(0, N); if (rr.length < 3) return null; const w = rr.filter((x) => x.ret > 0).length; return { N, n: rr.length, w, avg: rr.reduce((s, x) => s + x.ret, 0) / rr.length }; }).filter(Boolean);
-    const col = { 5: "#f59e0b", 7: "#8b5cf6", 10: "#0e9f6e", 15: "#4f46e5", 20: "#ec4899" };
+    const col = { 5: "#e27b1f", 7: "#7a3fd1", 10: "#12a568", 15: "#2e6ae6", 20: "#c2306b" };
     const mxAbs = Math.max(...rows.map((x) => Math.abs(x.ret)), 0.01);
     $("#btres").innerHTML = `<div class="card" style="margin-top:18px"><div class="card-h"><h2>Dal ${idxLabel(st.from)} al ${idxLabel(st.to)}</h2><div style="display:flex;gap:8px"><div class="seg" id="btdir"><button data-k="long" class="${st.dir === "long" ? "on" : ""}">Long</button><button data-k="short" class="${st.dir === "short" ? "on" : ""}">Short</button></div><button class="btn ghost" id="btx" style="padding:6px 12px">✕</button></div></div>
       <div class="bt"><div>${stats.map((s) => `<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:12.5px"><span style="font-weight:700;color:${col[s.N]}">Media ${s.N} anni</span><span class="num">${Math.round((s.w / s.n) * 100)}%</span></div><div class="bar-s"><i style="width:${(s.w / s.n) * 100}%;background:${col[s.N]}"></i></div><div class="muted" style="font-size:11.5px">${s.w} su ${s.n} positivi · media ${sgnf(s.avg)}%</div></div>`).join("") || `<div class="muted">Storico insufficiente</div>`}</div>
@@ -666,14 +710,14 @@ function renderCot() {
   const groups = [["Valute", S.meta.currencies.map((c) => ({ code: S.meta.cot_currency[c], label: `${flag(c)}${c}`, go: null }))],
     ["Indici", S.meta.groups.index.map((id) => ({ code: S.board.instruments[id].cot_code, label: esc(S.board.instruments[id].name), go: id }))],
     ["Materie prime", S.meta.groups.commodity.map((id) => ({ code: S.board.instruments[id].cot_code, label: esc(S.board.instruments[id].name), go: id }))]];
-  let h = `<div class="page-head"><div><h1>Posizionamento COT</h1><div class="sub">Commitments of Traders della CFTC: posizione netta degli speculatori</div></div><div class="stamp">Report settimanale, dati al martedì</div></div>`;
+  let h = `<div class="hero"><div><h1>Posizionamento COT</h1><div class="sub">Commitments of Traders della CFTC: posizione netta degli speculatori</div></div><div class="chipd">Report settimanale, dati al martedì</div></div>`;
   groups.forEach(([title, list]) => {
-    h += `<div class="card" style="margin-bottom:18px"><div class="card-h"><h2>${title}</h2><span class="hint">${title === "Materie prime" ? "managed money" : "asset manager + leveraged funds"}</span></div><div class="tbl-wrap"><table class="mini-t"><thead><tr><th>Mercato</th><th>Contratto</th><th>Netto</th><th>1 sett.</th><th>4 sett.</th><th>Percentile 3 anni</th><th>Ultimo anno</th><th>Score</th></tr></thead><tbody>`;
+    h += `<div class="card" style="margin-bottom:18px"><div class="card-h"><h2>${title}</h2><span class="hint">${title === "Materie prime" ? "managed money" : "asset manager + leveraged funds"}</span></div><div class="tbl-wrap"><table class="list"><thead><tr><th>Mercato</th><th>Contratto</th><th>Netto</th><th>1 sett.</th><th>4 sett.</th><th>Percentile 3 anni</th><th>Ultimo anno</th><th>Score</th></tr></thead><tbody>`;
     list.forEach((x) => {
       const c = x.code && S.cot[x.code];
       if (!c || !c.score) { h += `<tr><td><b>${x.label}</b></td><td class="muted" colspan="7">non disponibile</td></tr>`; return; }
       const s = c.score;
-      h += `<tr ${x.go ? `style="cursor:pointer" onclick="location.hash='pair-${x.go}'"` : ""}><td><b>${x.label}</b></td><td class="muted">${esc(c.name)}</td><td class="num ${s.net >= 0 ? "up" : "dn"}">${kfmt(s.net)}</td><td class="num">${kfmt(s.chg_1w)}</td><td class="num">${kfmt(s.chg_4w)}</td><td><div style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><div class="pct"><i style="width:${s.pctile}%"></i></div><span class="num" style="width:34px">${s.pctile}°</span></div></td><td>${spark(c.net_spec.slice(-52))}</td><td>${cell(s.score)}</td></tr>`;
+      h += `<tr ${x.go ? `style="cursor:pointer" onclick="location.hash='pair-${x.go}'"` : ""}><td><b>${x.label}</b></td><td class="muted">${esc(c.name)}</td><td class="num ${s.net >= 0 ? "up" : "dn"}">${kfmt(s.net)}</td><td class="num">${kfmt(s.chg_1w)}</td><td class="num">${kfmt(s.chg_4w)}</td><td><div style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><div class="pct"><i style="width:${s.pctile}%"></i></div><span class="num" style="width:34px">${s.pctile}°</span></div></td><td style="width:150px">${sparkW(c.net_spec.slice(-52), 30)}</td><td>${dot(s.score)}</td></tr>`;
     });
     h += `</tbody></table></div></div>`;
   });
@@ -685,7 +729,7 @@ function renderStatus() {
   const M = S.meta, st = M.status || {};
   const byKey = {}; (st.macro || []).forEach((x) => byKey[x.cur + "|" + x.ind] = x);
   const okN = (st.macro || []).filter((x) => x.ok).length, tot = (st.macro || []).length;
-  let h = `<div class="page-head"><div><h1>Stato dati</h1><div class="sub">Quali serie sono arrivate all'ultimo aggiornamento e da quale fonte</div></div><div class="stamp">Aggiornato ${fmtDate(S.board.as_of)}</div></div>
+  let h = `<div class="hero"><div><h1>Stato dati</h1><div class="sub">Quali serie sono arrivate all'ultimo aggiornamento e da quale fonte</div></div><div class="chipd">Aggiornato ${fmtDate(S.board.as_of)}</div></div>
   <div class="kpis"><div class="kpi"><div class="l">Serie macro attive</div><div class="v">${okN}<span class="muted" style="font-size:13px;font-weight:600">su ${tot}</span></div></div>
   <div class="kpi"><div class="l">Prezzi</div><div class="v">${Object.values(st.prices || {}).filter(Boolean).length}<span class="muted" style="font-size:13px;font-weight:600">su ${Object.keys(st.prices || {}).length}</span></div></div>
   <div class="kpi"><div class="l">Mercati COT</div><div class="v">${Object.values(st.cot || {}).filter(Boolean).length}<span class="muted" style="font-size:13px;font-weight:600">su ${Object.keys(st.cot || {}).length}</span></div></div>
@@ -712,7 +756,7 @@ function renderStatus() {
 /* ====================================================================== metodo */
 function renderMethod() {
   const M = S.meta;
-  $("#app").innerHTML = `<div class="page-head"><div><h1>Come funziona</h1><div class="sub">Regole del punteggio e fonti dei dati</div></div></div>
+  $("#app").innerHTML = `<div class="hero"><div><h1>Come funziona</h1><div class="sub">Regole del punteggio e fonti dei dati</div></div></div>
   <div class="card method">
     <h2 style="margin-top:0">Punteggio composito</h2>
     <p>Ogni coppia valutaria riceve un punteggio da −${M.max_fx} a +${M.max_fx}, dato dalla somma di tre componenti:</p>

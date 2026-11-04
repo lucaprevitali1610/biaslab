@@ -6,32 +6,38 @@
 <title>BiasLab — Bias macro, COT e stagionalità</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div id="demo"></div>
-<header class="top">
-  <div class="top-in">
-    <a class="logo" href="#board"><span class="logo-mark"></span><span id="site-name">BiasLab</span></a>
+<div class="shell">
+  <aside class="side">
+    <a class="logo" href="#board"><span class="logo-mark"><svg width="16" height="16" viewBox="0 0 16 16"><rect x="1" y="8" width="3" height="7" rx="1.5" fill="#d9f56b"/><rect x="6.5" y="4" width="3" height="11" rx="1.5" fill="#fff"/><rect x="12" y="1" width="3" height="14" rx="1.5" fill="#d9f56b"/></svg></span><span id="site-name">BiasLab</span></a>
+    <div class="nav-l">Analisi</div>
     <nav class="nav" id="nav">
-      <a href="#board" data-r="board">Bias board</a>
-      <a href="#cot" data-r="cot">Posizionamento COT</a>
-      <a href="#metodo" data-r="metodo">Metodo</a>
-      <a href="#stato" data-r="stato">Stato dati</a>
+      <a href="#board" data-r="board"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg><span>Bias board</span></a>
+      <a href="#cot" data-r="cot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Posizionamento COT</span></a>
+      <a href="#metodo" data-r="metodo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.5"/></svg><span>Metodo</span></a>
+      <a href="#stato" data-r="stato"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h4l3 7 4-14 3 7h4"/></svg><span>Stato dati</span></a>
     </nav>
-    <div class="top-right">
-      <span id="stamp"></span>
+    <div class="side-foot" id="side-foot"></div>
+  </aside>
+  <div class="main">
+    <div class="topbar">
       <div class="goto">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-        <input id="goto" placeholder="Vai a un mercato…" autocomplete="off">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="goto" placeholder="Cerca un mercato: EURUSD, oro, Nasdaq…" autocomplete="off"><kbd>/</kbd>
         <div class="goto-list" id="goto-list"></div>
       </div>
+      <div class="top-meta"><span class="chipd"><span class="live"></span><span id="stamp"></span></span></div>
     </div>
+    <div id="demo"></div>
+    <main id="app"><div class="empty">Caricamento…</div></main>
+    <div class="foot"><span>Solo a scopo informativo, non è una consulenza finanziaria.</span><span id="foot-gen"></span></div>
   </div>
-</header>
-<main id="app"><div class="empty">Caricamento…</div></main>
-<div class="foot"><span>Solo a scopo informativo, non è una consulenza finanziaria.</span><span id="foot-gen"></span></div>
+</div>
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer"></aside>
 <script src="app.js"></script>
 </body>
 </html>
