@@ -274,6 +274,7 @@ def build(prices, cot, macro, out_dir, demo=False, now=None, errors=None):
             for k in ("total", "macro", "cot", "season"):
                 hist[k].append(h[k])
         tot = hist["total"]
+        row["spark"] = tot[-26:]
         row["chg"] = {"1w": tot[-1] - tot[-2] if len(tot) > 1 else 0,
                       "1m": tot[-1] - tot[-5] if len(tot) > 4 else 0,
                       "3m": tot[-1] - tot[-14] if len(tot) > 13 else 0}
