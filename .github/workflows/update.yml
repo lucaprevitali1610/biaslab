@@ -37,6 +37,7 @@ jobs:
       - name: Scarica dati e calcola i punteggi
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
         run: python pipeline/build.py
       - uses: actions/upload-pages-artifact@v3
         with:
