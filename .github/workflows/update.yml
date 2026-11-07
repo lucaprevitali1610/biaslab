@@ -3,6 +3,7 @@ name: Aggiorna dati e pubblica il sito
 on:
   schedule:
     - cron: "23 5 * * 1-6"   # ogni mattina (lun-sab) alle 05:23 UTC
+    - cron: "41 14 * * 1-5"  # pomeriggio: dopo i dati USA delle 8:30 di New York
     - cron: "47 21 * * 5"    # venerdì sera, dopo il report COT
   workflow_dispatch: {}       # pulsante "Run workflow" manuale
   push:
@@ -27,6 +28,12 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
+      - name: Recupera gli ultimi dati salvati
+        uses: actions/cache@v4
+        with:
+          path: pipeline/.cache
+          key: dati-${{ github.run_id }}
+          restore-keys: dati-
       - name: Scarica dati e calcola i punteggi
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
