@@ -93,6 +93,7 @@ main{padding:22px 32px 56px;max-width:1520px}
 .s0{background:var(--zero);color:var(--zero-ink)}
 .sm1{background:var(--dn2);color:var(--dn-ink)}.sm2{background:var(--dn);color:#fff}
 .sn{background:transparent;color:var(--faint)}
+.sw{background:#fff1c7;color:#7a5600}
 /* pallino (vista dato per dato) */
 .dot{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;font:500 10px var(--mono);letter-spacing:-.04em}
 .dp2{background:var(--up);color:#fff;box-shadow:0 0 0 3px var(--up3)}

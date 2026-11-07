@@ -734,14 +734,15 @@ function renderStatus() {
   <div class="kpi"><div class="l">Prezzi</div><div class="v">${Object.values(st.prices || {}).filter(Boolean).length}<span class="muted" style="font-size:13px;font-weight:600">su ${Object.keys(st.prices || {}).length}</span></div></div>
   <div class="kpi"><div class="l">Mercati COT</div><div class="v">${Object.values(st.cot || {}).filter(Boolean).length}<span class="muted" style="font-size:13px;font-weight:600">su ${Object.keys(st.cot || {}).length}</span></div></div>
   <div class="kpi"><div class="l">Non configurati</div><div class="v muted" style="font-size:14px;font-weight:600">mostrati come "·"</div></div></div>
-  <div class="card"><div class="card-h"><h2>Dati macro per valuta</h2><span class="hint">verde = arrivato · rosso = errore · passa sopra per i dettagli</span></div><div class="tbl-wrap"><table class="t"><thead><tr><th class="l">Dato</th>${M.currencies.map((c) => `<th>${flag(c)}${c}</th>`).join("")}</tr></thead><tbody>`;
+  <div class="card"><div class="card-h"><h2>Dati macro per valuta</h2><span class="hint">verde = aggiornato · giallo = fonte non raggiungibile, mostrato l'ultimo dato salvato · rosso = mancante</span></div><div class="tbl-wrap"><table class="t"><thead><tr><th class="l">Dato</th>${M.currencies.map((c) => `<th>${flag(c)}${c}</th>`).join("")}</tr></thead><tbody>`;
   M.indicators.forEach((m) => {
     h += `<tr style="cursor:default"><td class="name" style="font-size:12.5px">${esc(m.label)}</td>`;
     M.currencies.forEach((c) => {
       const x = byKey[c + "|" + m.id];
       if (!x) { h += `<td><div class="cell sn">·</div></td>`; return; }
       const tip = x.ok ? `${x.source} · ultimo ${x.last}` : `${x.source || ""}: ${x.error || ""}`;
-      h += `<td title="${esc(tip)}"><div class="cell ${x.ok ? "s1" : "sm2"}" style="font-size:10.5px;padding:0 6px">${x.ok ? esc(x.last.slice(0, 7)) : "errore"}</div></td>`;
+      const stale = x.ok && /copia salvata/.test(x.source || "");
+      h += `<td title="${esc(tip)}"><div class="cell ${stale ? "sw" : x.ok ? "s1" : "sm2"}" style="font-size:10.5px;padding:0 6px">${x.ok ? esc(x.last.slice(0, 7)) : "errore"}</div></td>`;
     });
     h += "</tr>";
   });
