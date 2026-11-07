@@ -310,3 +310,7 @@ table.dg{border-collapse:separate;border-spacing:0;width:100%}
   .hero h1{font-size:24px}
   .col-hide{display:none}
 }
+
+.surp{display:inline-block;font:500 12px var(--mono);padding:1px 0;border-bottom:2px solid currentColor}
+.surp.muted{border-color:transparent}
+details summary::marker{color:var(--faint)}

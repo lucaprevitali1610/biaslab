@@ -367,15 +367,25 @@ async function openDrawer(id) {
 }
 
 function fmtVal(v, m) { if (v == null) return "—"; const d = m.unit === "k" ? 0 : m.unit === "idx" ? 1 : 2; return nf(v, d) + (m.unit.startsWith("%") ? "%" : ""); }
+const val = (x, k, m) => x[k + "_s"] ? esc(String(x[k + "_s"]).replace(".", ",")) : fmtVal(x[k], m);
+function surp(x) {
+  if (x.surprise == null || x.forecast == null) return `<span class="muted">—</span>`;
+  const ref = String(x.actual_s || ""), suf = (ref.match(/[KMB%]$/i) || [""])[0].toUpperCase();
+  const dec0 = ((ref.split(".")[1] || "").replace(/[^0-9]/g, "")).length, dec = suf === "%" || suf === "" ? Math.max(1, dec0) : dec0;
+  const div = { K: 1e3, M: 1e6, B: 1e9 }[suf] || 1;
+  const v = x.surprise / div, cls = x.score > 0 ? "up" : x.score < 0 ? "dn" : "muted";
+  return `<span class="surp ${cls}">${v > 0 ? "+" : ""}${nf(v, Math.min(dec, 2))}${suf}</span>`;
+}
+const relDate = (x) => x.released ? (() => { const [y, mo, d] = x.released.split("-"); return `${+d} ${MONTHS[+mo - 1]}`; })() : esc(x.period || "");
 
 function indTable(r) {
-  const M = S.meta; let h = `<table class="mini-t"><thead><tr><th>Dato</th><th>Periodo</th><th>Attuale</th><th>Prec.</th><th>Score</th></tr></thead><tbody>`;
+  const M = S.meta; let h = `<table class="mini-t"><thead><tr><th>Dato</th><th>Attuale</th><th>Previsione</th><th>Sorpresa</th><th>Uscito</th><th>Score</th></tr></thead><tbody>`;
   M.categories.forEach(([c, l]) => {
     const list = M.indicators.filter((m) => m.cat === c && r.ind[m.id]); if (!list.length) return;
-    h += `<tr class="cat"><td colspan="5">${l}</td></tr>`;
-    list.forEach((m) => { const x = r.ind[m.id]; h += `<tr><td title="${esc(x.source || "")}">${esc(m.label)}</td><td class="muted num">${esc(x.period)}</td><td class="num">${fmtVal(x.actual, m)}</td><td class="num muted">${fmtVal(x.previous, m)}</td><td>${dot(x.score)}</td></tr>`; });
+    h += `<tr class="cat"><td colspan="6">${l}</td></tr>`;
+    list.forEach((m) => { const x = r.ind[m.id]; h += `<tr><td title="${esc((x.title ? x.title + " · " : "") + (x.source || ""))}">${esc(m.label)}</td><td class="num"><b>${val(x, "actual", m)}</b></td><td class="num muted">${x.forecast_s ? val(x, "forecast", m) : `<span title="precedente">${val(x, "previous", m)}</span>`}</td><td class="num">${surp(x)}</td><td class="muted num">${relDate(x)}</td><td>${dot(x.score)}</td></tr>`; });
   });
-  return h + "</tbody></table>";
+  return h + `</tbody></table><div class="legend">Se manca la previsione, il confronto è con il dato precedente (in grigio).</div>`;
 }
 
 function pairMiniTable(r) {
@@ -495,17 +505,20 @@ function pairSummary(id, r, inst) {
 
 function releaseTable(r) {
   const M = S.meta, cb = S.board.currencies[r.base], cq = S.board.currencies[r.quote];
-  let h = `<table class="mini-t"><thead><tr><th>Dato</th><th>${flag(r.base)}Periodo</th><th>Attuale</th><th>Prec.</th><th>Score</th><th style="padding-left:24px">${flag(r.quote)}Periodo</th><th>Attuale</th><th>Prec.</th><th>Score</th><th style="padding-left:24px">Coppia</th></tr></thead><tbody>`;
+  const H = (c, pad) => `<th ${pad ? 'style="padding-left:28px"' : ""}><span style="display:inline-flex;align-items:center;gap:6px">${flag(c)}Attuale</span></th><th>Previsione</th><th>Sorpresa</th><th>Uscito</th><th>Score</th>`;
+  let h = `<table class="mini-t"><thead><tr><th>Dato</th>${H(r.base)}${H(r.quote, 1)}<th style="padding-left:28px">Coppia</th></tr></thead><tbody>`;
   M.categories.forEach(([c, l]) => {
     const list = M.indicators.filter((m) => m.cat === c && (cb.ind[m.id] || cq.ind[m.id])); if (!list.length) return;
-    h += `<tr class="cat"><td colspan="10">${l}</td></tr>`;
+    h += `<tr class="cat"><td colspan="12">${l}</td></tr>`;
     list.forEach((m) => {
       const a = cb.ind[m.id], b = cq.ind[m.id];
-      const part = (x, pad) => x ? `<td class="muted num" ${pad ? 'style="padding-left:24px"' : ""}>${esc(x.period)}</td><td class="num">${fmtVal(x.actual, m)}</td><td class="num muted">${fmtVal(x.previous, m)}</td><td>${dot(x.score)}</td>` : `<td ${pad ? 'style="padding-left:24px"' : ""} class="muted">—</td><td></td><td></td><td>${dot(null)}</td>`;
-      h += `<tr><td>${esc(m.label)}</td>${part(a)}${part(b, 1)}<td style="padding-left:24px">${dot(r.ind[m.id])}</td></tr>`;
+      const part = (x, pad) => { const ps = pad ? 'style="padding-left:28px"' : "";
+        return x ? `<td class="num" ${ps} title="${esc((x.title ? x.title + " · " : "") + (x.source || ""))}"><b>${val(x, "actual", m)}</b></td><td class="num muted">${x.forecast_s ? val(x, "forecast", m) : `<span title="precedente">${val(x, "previous", m)}</span>`}</td><td class="num">${surp(x)}</td><td class="num muted">${relDate(x)}</td><td>${dot(x.score)}</td>`
+          : `<td ${ps} class="muted">—</td><td></td><td></td><td></td><td>${dot(null)}</td>`; };
+      h += `<tr><td>${esc(m.label)}</td>${part(a)}${part(b, 1)}<td style="padding-left:28px">${dot(r.ind[m.id])}</td></tr>`;
     });
   });
-  return h + "</tbody></table>";
+  return h + `</tbody></table><div class="legend">Sorpresa = attuale − previsione. Senza previsione il confronto è con il dato precedente (in grigio). Passa sopra al valore per il nome dell'evento e la fonte.</div>`;
 }
 
 /* ---------------------------------------------------------------- COT */
@@ -749,6 +762,10 @@ function renderStatus() {
   h += `</tbody></table></div></div>`;
   const errs = (st.macro || []).filter((x) => !x.ok);
   if (errs.length) h += `<div class="card" style="margin-top:18px"><div class="card-h"><h2>Errori</h2></div><table class="mini-t"><thead><tr><th>Valuta</th><th>Dato</th><th>Fonte</th><th style="text-align:left">Motivo</th></tr></thead><tbody>${errs.map((x) => `<tr><td>${flag(x.cur)}${x.cur}</td><td style="text-align:left">${esc((M.indicators.find((m) => m.id === x.ind) || {}).label)}</td><td class="muted" style="text-align:left">${esc(x.source || "")}</td><td style="text-align:left;white-space:normal">${esc(x.error || "")}</td></tr>`).join("")}</tbody></table></div>`;
+  const cal = st.calendar || {};
+  h += `<div class="card" style="margin-top:18px"><div class="card-h"><h2>Calendario economico</h2><span class="hint">Forex Factory via Apify</span></div>
+    ${cal.events ? `<p style="margin:0 0 10px">${cal.events} eventi in archivio · ultimo download ${esc(cal.last_fetch || "—")}</p>` : `<p style="margin:0 0 10px" class="muted">Non attivo: aggiungi il secret APIFY_TOKEN su GitHub per i dati in tempo reale con le previsioni.</p>`}
+    ${(cal.unmapped || []).length ? `<details><summary class="muted" style="cursor:pointer">Eventi del calendario non usati (${cal.unmapped.length})</summary><table class="mini-t" style="margin-top:8px"><tbody>${cal.unmapped.map((u) => `<tr><td>${flag(u.cur)}${u.cur}</td><td style="text-align:left">${esc(u.title)}</td><td class="num muted">${u.n}</td></tr>`).join("")}</tbody></table></details>` : ""}</div>`;
   const missP = Object.entries(st.prices || {}).filter(([, v]) => !v).map(([k]) => k), missC = Object.entries(st.cot || {}).filter(([, v]) => !v).map(([k]) => k);
   if (missP.length || missC.length) h += `<div class="card" style="margin-top:18px"><div class="card-h"><h2>Altri dati mancanti</h2></div>${missP.length ? `<p>Prezzi: ${missP.map(esc).join(", ")}</p>` : ""}${missC.length ? `<p>COT: ${missC.map(esc).join(", ")}</p>` : ""}</div>`;
   $("#app").innerHTML = h;
