@@ -5,6 +5,7 @@ segnalata nel log e il sito mostrerà "—" al suo posto.
 """
 import io
 import json
+import pickle
 import logging
 import os
 import re
@@ -58,7 +59,7 @@ def fetch_prices(tickers):
     except Exception as e:
         log.warning("yfinance fallito: %s", e)
     missing = [t for t in tickers if t not in out]
-    for t in missing:  # fallback: API chart di Yahoo
+    for t in missing:  # riserva: API chart di Yahoo
         try:
             r = _get(f"https://query2.finance.yahoo.com/v8/finance/chart/{t}",
                      params={"range": "max", "interval": "1d"})
@@ -70,6 +71,14 @@ def fetch_prices(tickers):
                 out[t] = s
         except Exception as e:
             log.warning("prezzo %s non disponibile: %s", t, e)
+    for t in tickers:
+        if t in out:
+            save_good("px_" + re.sub(r"[^A-Za-z0-9]", "_", t), out[t])
+        else:
+            old = load_good("px_" + re.sub(r"[^A-Za-z0-9]", "_", t))
+            if old is not None:
+                out[t] = old
+                log.warning("prezzo %s: uso l'ultimo dato salvato", t)
     return out
 
 
@@ -136,8 +145,15 @@ def fetch_cot(start="2015-01-01"):
         except Exception as e:
             log.warning("COT %s non disponibile: %s", ds, e)
     for c in fin_codes + com_codes:
-        if c not in out:
-            log.warning("COT: nessun dato per il codice %s", c)
+        if c in out:
+            save_good(f"cot_{c}", out[c])
+        else:
+            old = load_good(f"cot_{c}")
+            if old is not None:
+                out[c] = old
+                log.warning("COT %s: uso l'ultimo dato salvato", c)
+            else:
+                log.warning("COT: nessun dato per il codice %s", c)
     return out
 
 
@@ -155,6 +171,27 @@ def _transform(s, how, scale=1.0):
 
 
 _fred_down = False
+STORE = CACHE / "store"
+STORE.mkdir(exist_ok=True)
+
+
+def save_good(name, obj):
+    try:
+        with open(STORE / f"{name}.pkl", "wb") as f:
+            pickle.dump(obj, f)
+    except Exception as e:  # pragma: no cover
+        log.info("salvataggio %s non riuscito: %s", name, e)
+
+
+def load_good(name):
+    f = STORE / f"{name}.pkl"
+    if f.exists():
+        try:
+            with open(f, "rb") as fh:
+                return pickle.load(fh)
+        except Exception:
+            return None
+    return None
 ERRORS = {}  # (valuta, indicatore) -> motivo
 
 
@@ -163,12 +200,18 @@ def _fred(sid):
     global _fred_down
     key = os.environ.get("FRED_API_KEY", "").strip()
     if key:
-        r = _get("https://api.stlouisfed.org/fred/series/observations",
-                 params={"series_id": sid, "api_key": key, "file_type": "json",
-                         "observation_start": "2005-01-01"}, tries=2, timeout=30)
-        obs = r.json().get("observations", [])
-        s = pd.Series({pd.Timestamp(o["date"]): pd.to_numeric(o["value"], errors="coerce") for o in obs})
-        return s.dropna().sort_index()
+        try:
+            r = _get("https://api.stlouisfed.org/fred/series/observations",
+                     params={"series_id": sid, "api_key": key, "file_type": "json",
+                             "observation_start": "2005-01-01"}, tries=4, timeout=40)
+            obs = r.json().get("observations", [])
+            s = pd.Series({pd.Timestamp(o["date"]): pd.to_numeric(o["value"], errors="coerce") for o in obs})
+            s = s.dropna().sort_index()
+            if len(s):
+                return s
+            raise RuntimeError("risposta vuota")
+        except Exception as e:
+            log.warning("FRED API %s: %s, provo il CSV pubblico", sid, str(e)[:120])
     if _fred_down:
         raise RuntimeError("FRED non raggiungibile (saltata)")
     try:
@@ -358,10 +401,18 @@ def fetch_macro():
                 if s is None or len(s) < 3:
                     raise RuntimeError("serie troppo corta")
                 out[(cur, ind)] = {"series": s.sort_index(), "source": src}
+                save_good(f"macro_{cur}_{ind}", out[(cur, ind)])
                 break
             except Exception as e:
                 err = e
         if (cur, ind) not in out:
+            old = load_good(f"macro_{cur}_{ind}")
+            if old is not None:
+                old = dict(old)
+                old["source"] = old["source"] + " · copia salvata (fonte non raggiungibile)"
+                out[(cur, ind)] = old
+                log.warning("macro %s/%s: fonte non raggiungibile, uso l'ultimo dato salvato", cur, ind)
+                continue
             ERRORS[(cur, ind)] = str(err)[:200]
             log.warning("macro %s/%s non disponibile: %s", cur, ind, str(err)[:160])
     log.info("macro: %d serie scaricate in %.0fs", len(out), time.time() - t0)
