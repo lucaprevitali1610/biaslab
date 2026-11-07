@@ -8,6 +8,9 @@ import numpy as np
 import pandas as pd
 
 import config as C
+import calendar_ff
+
+CAL = {}  # (valuta, indicatore) -> gruppi di eventi del calendario
 
 IND = {i["id"]: i for i in C.INDICATORS}
 
@@ -89,10 +92,15 @@ def indicator_score(ind_id, s, as_of=None):
 def currency_macro(macro, cur, as_of=None):
     inds = {}
     for meta in C.INDICATORS:
-        item = macro.get((cur, meta["id"]))
-        res = indicator_score(meta["id"], item["series"], as_of) if item else None
-        if res and as_of is None:
-            res["source"] = item["source"]
+        res = None
+        groups = CAL.get((cur, meta["id"]))
+        if groups:  # 1) calendario economico: attuale vs previsione
+            res = calendar_ff.score(meta["id"], groups, as_of, bool(meta.get("invert")))
+        if res is None:  # 2) riserva: serie statistiche, confronto col dato precedente
+            item = macro.get((cur, meta["id"]))
+            res = indicator_score(meta["id"], item["series"], as_of) if item else None
+            if res and as_of is None:
+                res["source"] = item["source"]
         inds[meta["id"]] = res
     cats = {}
     for cid, _ in C.CATEGORIES:
@@ -218,8 +226,10 @@ def history_dates(end):
 
 
 # ================================================================== build
-def build(prices, cot, macro, out_dir, demo=False, now=None, errors=None):
+def build(prices, cot, macro, out_dir, demo=False, now=None, errors=None, calendar=None):
     out = Path(out_dir)
+    global CAL
+    CAL, unmapped = calendar_ff.build_series(calendar)
     (out / "inst").mkdir(parents=True, exist_ok=True)
     now = pd.Timestamp(now or datetime.now(timezone.utc).date())
     insts = instrument_list()
@@ -318,10 +328,15 @@ def build(prices, cot, macro, out_dir, demo=False, now=None, errors=None):
     (out / "cot.json").write_text(json.dumps(cot_out, separators=(",", ":")))
 
     status = []
-    for (cur, ind), spec in C.MACRO_SOURCES.items():
+    keys = list(C.MACRO_SOURCES) + [k for k in CAL if k not in C.MACRO_SOURCES]
+    for (cur, ind) in keys:
+        spec = C.MACRO_SOURCES.get((cur, ind), {"src": "calendar"})
         item = macro.get((cur, ind))
         sc_ = board["currencies"][cur]["ind"].get(ind)
-        if item is not None:
+        if sc_ is not None and sc_.get("source") == "Forex Factory":
+            status.append({"cur": cur, "ind": ind, "ok": True, "source": "Forex Factory · " + sc_.get("title", ""),
+                           "last": sc_["released"], "n": sum(len(g) for g in CAL[(cur, ind)].values()), "error": None})
+        elif item is not None:
             s_ = item["series"]
             status.append({"cur": cur, "ind": ind, "ok": sc_ is not None, "source": item["source"],
                            "last": s_.index[-1].strftime("%Y-%m-%d"), "n": int(len(s_)),
@@ -333,7 +348,10 @@ def build(prices, cot, macro, out_dir, demo=False, now=None, errors=None):
     cot_ok = {code: code in cot for code in set(C.COT_CURRENCY.values()) | {i["cot"] for i in insts if i.get("cot")}}
 
     meta = {
-        "status": {"macro": status, "prices": prices_ok, "cot": cot_ok},
+        "status": {"macro": status, "prices": prices_ok, "cot": cot_ok,
+                   "calendar": {"events": len((calendar or {}).get("events", {})),
+                                "last_fetch": (calendar or {}).get("last_fetch"),
+                                "unmapped": unmapped[:60]}},
         "site": C.SITE_NAME, "demo": demo, "generated": board["generated"],
         "currencies": C.CURRENCIES, "currency_names": C.CURRENCY_NAMES,
         "groups": {"major": C.MAJORS, "cross": C.CROSSES, "index": list(C.INDICES), "commodity": list(C.COMMODITIES)},

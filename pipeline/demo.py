@@ -66,8 +66,7 @@ def demo_cot(end, seed=11):
     return out
 
 
-DEMO_LEVEL = {"gdp": (0.4, 0.5), "bci": (100, 1.0), "cci": (99.5, 1.2), "retail": (0.3, 0.6),
-              "indprod": (0.1, 0.7), "cpi": (2.6, 0.25), "core": (2.8, 0.2), "ppi": (2.2, 0.5),
+DEMO_LEVEL = {"gdp": (0.4, 0.5), "mpmi": (50, 1.0), "spmi": (52, 1.0), "cci": (99.5, 1.2), "retail": (0.3, 0.6), "cpi": (2.6, 0.25), "core": (2.8, 0.2), "ppi": (2.2, 0.5),
               "pce": (2.8, 0.15), "rate": (3.0, 0.0), "nfp": (120, 70), "unemp": (4.3, 0.12),
               "claims": (225, 8), "adp": (90, 60), "wages": (3.8, 0.15), "jolts": (7.2, 0.25)}
 
@@ -75,8 +74,9 @@ DEMO_LEVEL = {"gdp": (0.4, 0.5), "bci": (100, 1.0), "cci": (99.5, 1.2), "retail"
 def demo_macro(end, seed=5):
     rng = np.random.default_rng(seed)
     out = {}
-    for (cur, ind), spec in C.MACRO_SOURCES.items():
-        if cur != "USD" and ind in ("ppi", "pce", "nfp", "claims", "adp", "wages", "jolts", "retail", "indprod"):
+    keys = list(C.MACRO_SOURCES) + [(c, "spmi") for c in C.CURRENCIES]
+    for (cur, ind) in keys:
+        if cur != "USD" and ind in ("ppi", "pce", "nfp", "claims", "adp", "wages", "jolts", "retail"):
             if rng.random() < 0.85:
                 continue
         lvl, vol = DEMO_LEVEL[ind]
@@ -96,3 +96,36 @@ def demo_macro(end, seed=5):
             v = lvl + ar
         out[(cur, ind)] = {"series": pd.Series(v, index=idx).round(3), "source": "DEMO"}
     return out
+
+
+def demo_calendar(end, seed=3):
+    """Eventi sintetici nel formato del calendario Forex Factory (solo per la demo)."""
+    import calendar_ff as CF
+    rng = np.random.default_rng(seed)
+    end = pd.Timestamp(end)
+    events = {}
+    lv = {"gdp": (0.4, 0.3, "%"), "mpmi": (50, 1.2, ""), "spmi": (52, 1.2, ""), "retail": (0.3, 0.5, "%"),
+          "cci": (95, 3, ""), "cpi": (2.8, 0.2, "%"), "core": (0.3, 0.1, "%"), "ppi": (0.2, 0.3, "%"),
+          "pce": (0.2, 0.1, "%"), "rate": (3.0, 0, "%"), "nfp": (90, 60, "K"), "unemp": (4.3, 0.1, "%"),
+          "claims": (220, 10, "K"), "adp": (80, 50, "K"), "wages": (0.3, 0.1, "%"), "jolts": (7.2, 0.3, "M")}
+    for cur, m in CF.CAL_MAP.items():
+        for ind, pats in m.items():
+            title = pats[0].replace("(", "").replace(")", "").replace("?", "").replace("|", " ").replace("\\", "")
+            title = " ".join(title.split()).replace("advance prelim final ", "").replace("flash prelim revised ", "")
+            base, vol, u = lv[ind]
+            step = 7 if ind == "claims" else 91 if ind in ("gdp",) else 30
+            prev = base
+            for k, d in enumerate(pd.date_range(end - pd.Timedelta(days=200), end, freq=f"{step}D")):
+                if ind == "rate":
+                    act = prev + rng.choice([0, 0, 0, 0.25, -0.25])
+                    fc = act if rng.random() < .8 else prev
+                else:
+                    fc = prev + rng.normal(0, vol * .3)
+                    act = fc + rng.normal(0, vol)
+                fmt = (lambda v: f"{v:.1f}{u}") if u in ("%", "") else (lambda v: f"{v:.0f}{u}" if u == "K" else f"{v:.2f}{u}")
+                ts = int((d + pd.Timedelta(hours=13, minutes=30)).timestamp())
+                eid = f"demo-{cur}-{ind}-{k}"
+                events[eid] = {"id": eid, "cur": cur, "title": title, "ts": ts, "imp": "H",
+                               "a": fmt(act), "f": fmt(fc), "p": fmt(prev), "r": ""}
+                prev = act
+    return {"events": events, "last_fetch": end.strftime("%Y-%m-%d")}

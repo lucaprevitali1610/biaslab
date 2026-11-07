@@ -40,8 +40,12 @@ def main():
             logging.error("nessun dato scaricato: interrompo per non sovrascrivere i dati esistenti")
             sys.exit(1)
 
+    calendar = demo.demo_calendar(today) if args.demo else None
+    if not args.demo:
+        import calendar_ff
+        calendar = calendar_ff.update(args.out, fetch.CACHE / "store")
     errors = {} if args.demo else fetch.ERRORS
-    board = compute.build(prices, cot, macro, args.out, demo=args.demo, errors=errors)
+    board = compute.build(prices, cot, macro, args.out, demo=args.demo, errors=errors, calendar=calendar)
     n = len(board["instruments"])
     logging.info("scritti %d strumenti in %s", n, args.out)
 
