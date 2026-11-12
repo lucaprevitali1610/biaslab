@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRV Journal — PRV Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <a class="logo" href="#board"><span class="logo-mark"><svg width="16" height="16" viewBox="0 0 16 16"><rect x="1" y="8" width="3" height="7" rx="1.5" fill="#d9f56b"/><rect x="6.5" y="4" width="3" height="11" rx="1.5" fill="#fff"/><rect x="12" y="1" width="3" height="14" rx="1.5" fill="#d9f56b"/></svg></span><span id="site-name">PRV Journal</span></a>
+    <div class="nav-l">Analisi</div>
+    <nav class="nav" id="nav">
+      <a href="#board" data-r="board"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg><span>PRV Board</span></a>
+      <a href="#cot" data-r="cot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Posizionamento COT</span></a>
+      <a href="#grafico" data-r="grafico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/></svg><span>Grafico</span></a>
+    </nav>
+    <div class="side-foot" id="side-foot"></div>
+  </aside>
+  <div class="main">
+    <div class="topbar">
+      <div class="goto">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="goto" placeholder="Cerca un mercato: EURUSD, oro, Nasdaq…" autocomplete="off"><kbd>/</kbd>
+        <div class="goto-list" id="goto-list"></div>
+      </div>
+      <div class="top-meta"><span class="chipd"><span class="live"></span><span id="stamp"></span></span></div>
+    </div>
+    <div id="demo"></div>
+    <main id="app"><div class="empty">Caricamento…</div></main>
+    <footer class="foot"><span class="copy">© 2026 PRV Journal · Tutti i diritti riservati</span><span>Solo a scopo informativo, non costituisce consulenza finanziaria. <span id="foot-gen"></span></span></footer>
+  </div>
+</div>
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer"></aside>
+<script src="app.js"></script>
+</body>
+</html>
