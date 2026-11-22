@@ -429,3 +429,7 @@ details summary::marker{color:var(--faint)}
 :root[data-theme=dark] .goto input:focus{border-color:rgba(217,245,107,.45)}
 .setup .t .pill{font-size:11px;padding:3px 8px;gap:4px}
 .setup .t .flags{margin-right:7px}
+
+/* ================================================= schermi larghi: contenuto centrato e allineato */
+.topbar,#demo,main,.foot{max-width:1600px;margin-left:auto;margin-right:auto}
+.topbar,main,.foot{width:100%}
