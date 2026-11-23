@@ -20,6 +20,13 @@ const kfmt = (v) => v == null ? "—" : (v > 0 ? "+" : "") + Math.round(v).toLoc
 const isDark = () => document.documentElement.dataset.theme === "dark";
 const DK = { "#14161b": "#e6e8ee", "#0f1222": "#e6e8ee", "#fff": "#16181d", "#ffffff": "#16181d", "#e2e2dc": "#3a3e48", "#d4d5cf": "#363a44", "#c9ccd9": "#3a3e48", "#d5d8e3": "#363a44", "#1f3a8a": "#3b5bc4" };
 const TC = (h) => (isDark() && DK[h]) || h;
+/* statistiche anonime (Umami): solo nomi di pagine, mercati pubblici e azioni */
+const trk = (name, data) => { try { window.umami && window.umami.track(name, data); } catch {} };
+function trackRoute() {
+  const h = decodeURIComponent(location.hash.slice(1)) || "board";
+  if (h.startsWith("pair-")) trk("mercato", { id: h.slice(5).toUpperCase() });
+  else if (h === "cot" || h === "grafico" || h === "board") trk("pagina", { nome: h });
+}
 
 const CCY_COLOR = { USD: "#1f3a8a", EUR: "#2e6ae6", GBP: "#7a3fd1", JPY: "#d6453d", CHF: "#e27b1f", CAD: "#c2306b", AUD: "#0f8a6a", NZD: "#14161b" };
 const CC2 = { USD: "US", EUR: "EU", GBP: "GB", JPY: "JP", CHF: "CH", CAD: "CA", AUD: "AU", NZD: "NZ" };
@@ -201,7 +208,9 @@ async function load() {
   $("#scrim").onclick = closeDrawer;
   setupGoto();
   window.addEventListener("hashchange", route);
+  window.addEventListener("hashchange", trackRoute);
   route();
+  if (window.umami) trackRoute(); else window.addEventListener("load", trackRoute, { once: true });
 }
 
 function route() {
@@ -342,7 +351,7 @@ function drawMatrix() {
 function closeDrawer() { const d = $("#drawer"); if (d) { d.classList.remove("open"); $("#scrim").classList.remove("open"); } }
 async function openDrawer(id) {
   const B = S.board, M = S.meta, d = $("#drawer");
-  S.sel = id;
+  S.sel = id; trk("dettaglio", { id });
   if (B.currencies[id]) {
     const r = B.currencies[id], cot = r.cot, total = r.total + (cot ? cot.score : 0);
     const pairs = Object.entries(B.instruments).filter(([, x]) => x.base === id || x.quote === id).map(([pid, x]) => ({ pid, other: x.base === id ? x.quote : x.base, v: x.base === id ? x.total : -x.total, max: x.max })).sort((a, b) => b.v - a.v);
@@ -759,7 +768,7 @@ const tvSymbol = (id) => TV[id] || `OANDA:${id}`;
 const consent = { get() { try { return localStorage.getItem("prv_consent"); } catch { return null; } }, set(v) { try { localStorage.setItem("prv_consent", v); } catch {} } };
 function showConsentBar(show) { const b = $("#consentBar"); if (b) b.hidden = !show; }
 function onConsent(v) {
-  consent.set(v); showConsentBar(false);
+  consent.set(v); showConsentBar(false); trk("tradingview", { scelta: v });
   if (v === "yes") $$("[data-tv-pending]").forEach((el) => tvChart(el, el.dataset.tvPending, +el.dataset.tvHeight));
 }
 function tvChart(el, id, height = 600) {
@@ -822,7 +831,7 @@ function setTheme(t) {
   const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t === "dark" ? "#0e0f12" : "#f4f4f0";
 }
 $("#themeBtn").onclick = () => {
-  setTheme(isDark() ? "light" : "dark");
+  setTheme(isDark() ? "light" : "dark"); trk("tema", { tema: isDark() ? "scuro" : "chiaro" });
   if (!S.board) return;
   const y = window.scrollY, open = $("#drawer").classList.contains("open"), sel = S.sel;
   route();                                   // ridisegna la pagina con i nuovi colori

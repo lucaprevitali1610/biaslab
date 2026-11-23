@@ -7,6 +7,9 @@
 <script>/* tema predefinito: scuro (la scelta fatta con il pulsante viene ricordata) */
 document.documentElement.dataset.theme="dark";try{var t=localStorage.getItem("prv_theme");if(t==="light"){document.documentElement.dataset.theme="light";document.querySelector('meta[name="theme-color"]').content="#f4f4f0"}}catch(e){}</script>
 <title>PRV Journal — PRV Board</title>
+<!-- Statistiche anonime senza cookie (Umami). Per escludere le tue visite apri il sito con #escludimi alla fine dell'indirizzo (#includimi per annullare) -->
+<script>(function(){function f(){try{if(location.hash==="#escludimi")localStorage.setItem("umami.disabled","1");else if(location.hash==="#includimi")localStorage.removeItem("umami.disabled")}catch(e){}}f();addEventListener("hashchange",f)})()</script>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="75d9e488-fb62-4892-b191-b3a72c148186" data-domains="prvjournal.com,www.prvjournal.com,tracking.prvjournal.com,board.prvjournal.com"></script>
 <link rel="stylesheet" href="fonts/fonts.css"><!-- caratteri ospitati sul sito: nessuna connessione a Google -->
 <link rel="stylesheet" href="styles.css">
 </head>
