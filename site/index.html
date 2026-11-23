@@ -7,9 +7,7 @@
 <script>/* tema predefinito: scuro (la scelta fatta con il pulsante viene ricordata) */
 document.documentElement.dataset.theme="dark";try{var t=localStorage.getItem("prv_theme");if(t==="light"){document.documentElement.dataset.theme="light";document.querySelector('meta[name="theme-color"]').content="#f4f4f0"}}catch(e){}</script>
 <title>PRV Journal — PRV Board</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fonts/fonts.css"><!-- caratteri ospitati sul sito: nessuna connessione a Google -->
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -39,8 +37,12 @@ document.documentElement.dataset.theme="dark";try{var t=localStorage.getItem("pr
     </div>
     <div id="demo"></div>
     <main id="app"><div class="empty">Caricamento…</div></main>
-    <footer class="foot"><span class="copy">© 2026 PRV Journal · Tutti i diritti riservati</span><span>Solo a scopo informativo, non costituisce consulenza finanziaria. <span id="foot-gen"></span></span></footer>
+    <footer class="foot"><span class="copy">© 2026 PRV Journal · Tutti i diritti riservati · <a href="privacy.html" class="flink">Privacy e cookie</a> · <button type="button" class="flink" id="cookiePrefs">Preferenze cookie</button></span><span>Solo a scopo informativo, non costituisce consulenza finanziaria. <span id="foot-gen"></span></span></footer>
   </div>
+</div>
+<div class="consent-bar" id="consentBar" role="dialog" aria-live="polite" aria-label="Preferenze cookie" hidden>
+  <div class="consent-txt"><b>Cookie e privacy</b> Il Board usa solo memoria tecnica del browser, senza cookie. Il grafico interattivo è fornito da <b>TradingView</b>, che può usare cookie propri: lo carichiamo solo se acconsenti. <a href="privacy.html">Privacy e cookie</a></div>
+  <div class="consent-btns"><button type="button" class="btn ghost" id="consentNo">Rifiuta</button><button type="button" class="btn" id="consentYes">Accetta</button></div>
 </div>
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer"></aside>

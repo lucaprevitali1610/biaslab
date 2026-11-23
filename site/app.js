@@ -755,7 +755,23 @@ const TV = {
   XAU: "OANDA:XAUUSD", XAG: "OANDA:XAGUSD", WTI: "OANDA:WTICOUSD", COPPER: "OANDA:XCUUSD",
 };
 const tvSymbol = (id) => TV[id] || `OANDA:${id}`;
+/* --- consenso per TradingView: il widget (servizio esterno con cookie propri) si carica solo dopo il "sì" --- */
+const consent = { get() { try { return localStorage.getItem("prv_consent"); } catch { return null; } }, set(v) { try { localStorage.setItem("prv_consent", v); } catch {} } };
+function showConsentBar(show) { const b = $("#consentBar"); if (b) b.hidden = !show; }
+function onConsent(v) {
+  consent.set(v); showConsentBar(false);
+  if (v === "yes") $$("[data-tv-pending]").forEach((el) => tvChart(el, el.dataset.tvPending, +el.dataset.tvHeight));
+}
 function tvChart(el, id, height = 600) {
+  if (consent.get() !== "yes") {
+    el.dataset.tvPending = id; el.dataset.tvHeight = height;
+    el.innerHTML = `<div class="tv-wrap" style="height:${height}px"><div class="tv-consent"><div><div class="ttl">Grafico interattivo TradingView</div>
+      <p>Questo grafico è fornito da TradingView, un servizio esterno che può usare cookie propri. Lo carichiamo solo con il tuo consenso. <a href="privacy.html" style="text-decoration:underline">Privacy e cookie</a></p>
+      <button type="button" class="btn" data-tv-ok>Carica il grafico <span class="arr">→</span></button></div></div></div>`;
+    $("[data-tv-ok]", el).onclick = () => onConsent("yes");
+    return;
+  }
+  el.removeAttribute("data-tv-pending");
   el.innerHTML = `<div class="tv-wrap" style="height:${height}px"><div class="tradingview-widget-container" style="height:100%;width:100%"><div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div></div>
     <div class="tv-fallback">Il grafico TradingView si carica sul sito pubblicato. Se non compare, controlla la connessione o un eventuale blocco pubblicità.</div></div>`;
   const sc = document.createElement("script");
@@ -813,5 +829,11 @@ $("#themeBtn").onclick = () => {
   window.scrollTo(0, y);
   if (open && sel) openDrawer(sel);
 };
+
+/* banner del consenso: compare finché non scegli; "Preferenze cookie" nel piè di pagina lo riapre */
+$("#consentYes").onclick = () => onConsent("yes");
+$("#consentNo").onclick = () => onConsent("no");
+$("#cookiePrefs").onclick = () => showConsentBar(true);
+if (!consent.get()) showConsentBar(true);
 
 load();
