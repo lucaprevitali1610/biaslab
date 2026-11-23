@@ -840,7 +840,7 @@ $("#themeBtn").onclick = () => {
 };
 
 /* link per le donazioni (Ko-fi, PayPal, ecc.): finché è vuoto resta nascosto */
-const DONATE_URL = "";
+const DONATE_URL = "https://ko-fi.com/Y6O12B6J34";
 if (DONATE_URL) { $("#donateLink").href = DONATE_URL; $("#donateWrap").hidden = false; }
 
 /* banner del consenso: compare finché non scegli; "Preferenze cookie" nel piè di pagina lo riapre */
