@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Bias della settimana — generatore · PRV Board</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body{background:var(--bg)}
+  .gen{max-width:1240px;margin:0 auto;padding:28px 24px 60px}
+  .gen-h{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+  .gen-h h1{margin:0;font:700 28px var(--head);letter-spacing:-.03em}
+  .gen-h .sub{color:var(--mute);margin-top:4px}
+  .gen-grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:22px;align-items:start}
+  .preview{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;display:grid;place-items:center}
+  .preview canvas{max-width:100%;max-height:78vh;height:auto;border-radius:10px;box-shadow:0 20px 50px -20px rgba(0,0,0,.7)}
+  .side-panel{display:flex;flex-direction:column;gap:14px}
+  .side-panel .card h2{margin:0 0 10px;font-size:15px}
+  textarea{width:100%;min-height:330px;resize:vertical;background:var(--soft);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:12px;font:13px/1.55 Inter,system-ui,sans-serif}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  .row .btn{flex:1}
+  .note{font-size:12.5px;color:var(--mute);line-height:1.5}
+  .warn{background:rgba(240,86,74,.12);border:1px solid rgba(240,86,74,.35);color:#ff9d93;border-radius:12px;padding:10px 14px;font-size:13px;margin-bottom:16px}
+  @media (max-width:1000px){.gen-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="gen">
+  <div class="gen-h">
+    <div><div class="eyebrow">PRV Board · strumento interno</div><h1>Bias della settimana</h1><div class="sub" id="sub">Caricamento dati…</div></div>
+    <div class="seg" id="fmt">
+      <button data-f="post" class="on">Post 1080×1350</button>
+      <button data-f="story">Storia 1080×1920</button>
+      <button data-f="x">X 1600×900</button>
+    </div>
+  </div>
+  <div id="warn"></div>
+  <div class="gen-grid">
+    <div class="preview"><canvas id="cv" width="1080" height="1350" aria-label="Anteprima immagine del bias della settimana"></canvas></div>
+    <div class="side-panel">
+      <div class="card">
+        <h2>Immagine</h2>
+        <div class="row"><button class="btn" id="dl">Scarica PNG <span class="arr">↓</span></button></div>
+        <p class="note" style="margin:10px 0 0">Usa i dati del Board aggiornati all'ultima esecuzione della pipeline. Ricarica la pagina per i dati più recenti.</p>
+      </div>
+      <div class="card">
+        <h2>Testo del post</h2>
+        <textarea id="cap" spellcheck="false"></textarea>
+        <div class="row" style="margin-top:10px"><button class="btn" id="copy">Copia testo</button></div>
+        <p class="note" id="copied" style="margin:8px 0 0"></p>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+"use strict";
+const $ = (s) => document.querySelector(s);
+const C = { bg: "#0e0f12", card: "#16181d", line: "#272a32", ink: "#eceef2", ink2: "#c4c7cf", mute: "#8d919b", lime: "#d9f56b", up: "#1fb06f", dn: "#f0564a" };
+const CCY = { USD: "#3b5bc4", EUR: "#2e6ae6", GBP: "#7a3fd1", JPY: "#d6453d", CHF: "#e27b1f", CAD: "#c2306b", AUD: "#0f8a6a", NZD: "#4b5160" };
+const CC2 = { USD: "US", EUR: "EU", GBP: "GB", JPY: "JP", CHF: "CH", CAD: "CA", AUD: "AU", NZD: "NZ" };
+const MESI = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
+const FMT = { post: [1080, 1350], story: [1080, 1920], x: [1600, 900] };
+const sg = (v) => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v);
+let D = null, fmt = "post";
+
+/* ---------------------------------------------------------------- dati */
+function weekOf(asOf) {
+  const d = new Date(asOf + "T12:00:00Z"), dow = d.getUTCDay();          // 0 dom … 6 sab
+  const mon = new Date(d); mon.setUTCDate(d.getUTCDate() + (dow === 0 ? 1 : dow >= 5 ? 8 - dow : 1 - dow));
+  const fri = new Date(mon); fri.setUTCDate(mon.getUTCDate() + 4);
+  const a = mon.getUTCDate(), b = fri.getUTCDate(), ma = MESI[mon.getUTCMonth()], mb = MESI[fri.getUTCMonth()];
+  return { label: ma === mb ? `${a}–${b} ${mb} ${fri.getUTCFullYear()}` : `${a} ${ma} – ${b} ${mb} ${fri.getUTCFullYear()}`, iso: mon.toISOString().slice(0, 10) };
+}
+function shortDate(s) { if (!s) return ""; const d = new Date(s + "T12:00:00Z"); return `${d.getUTCDate()} ${MESI[d.getUTCMonth()].slice(0, 3)}`; }
+async function loadData() {
+  const [board, meta] = await Promise.all([fetch("data/board.json", { cache: "no-cache" }).then((r) => r.json()), fetch("data/meta.json", { cache: "no-cache" }).then((r) => r.json())]);
+  const strength = meta.currencies.map((c) => { const r = board.currencies[c]; return { c, v: r.total + (r.cot ? r.cot.score : 0), cot: r.cot ? r.cot.score : 0 }; }).sort((a, b) => b.v - a.v);
+  const fx = [...meta.groups.major, ...meta.groups.cross].map((id) => ({ id, ...board.instruments[id] }));
+  const bulls = fx.filter((x) => x.total > 0).sort((a, b) => b.total / b.max - a.total / a.max).slice(0, 3);
+  const bears = fx.filter((x) => x.total < 0).sort((a, b) => a.total / a.max - b.total / b.max).slice(0, 3);
+  const others = [...meta.groups.index, ...meta.groups.commodity].map((id) => ({ id, ...board.instruments[id] })).filter((x) => x.total !== 0)
+    .sort((a, b) => Math.abs(b.total / b.max) - Math.abs(a.total / a.max)).slice(0, 4);
+  const cotDate = (Object.values(board.currencies).find((r) => r.cot && r.cot.date) || {}).cot?.date;
+  return { demo: !!board.demo, asOf: board.as_of, week: weekOf(board.as_of), strength, bulls, bears, others, cotDate };
+}
+
+/* ---------------------------------------------------------------- disegno */
+function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+function txt(ctx, s, x, y, font, color, align = "left", base = "alphabetic") { ctx.font = font; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = base; ctx.fillText(s, x, y); return ctx.measureText(s).width; }
+function pill(ctx, s, x, y, kind, size = 20, alignRight = false) {
+  const bg = { "Molto rialzista": C.up, "Rialzista": "rgba(31,176,111,.16)", "Neutrale": "rgba(255,255,255,.06)", "Ribassista": "rgba(240,86,74,.16)", "Molto ribassista": C.dn }[kind] || "rgba(255,255,255,.06)";
+  const fg = { "Molto rialzista": "#fff", "Rialzista": "#73e0ad", "Neutrale": C.mute, "Ribassista": "#ff9d93", "Molto ribassista": "#fff" }[kind] || C.mute;
+  ctx.font = `600 ${size}px Inter`; const w = ctx.measureText(s).width + size * 1.2, h = size * 1.7;
+  const x0 = alignRight ? x - w : x; rr(ctx, x0, y - h / 2, w, h, h / 2); ctx.fillStyle = bg; ctx.fill();
+  txt(ctx, s, x0 + w / 2, y + 1, `600 ${size}px Inter`, fg, "center", "middle"); return w;
+}
+function logo(ctx, x, y, s) {           // marchio del Board: tre barre
+  rr(ctx, x, y, s, s, s * .3); ctx.fillStyle = "#262a33"; ctx.fill();
+  const bw = s * .16, gap = s * .1, base = y + s * .78, x0 = x + (s - (3 * bw + 2 * gap)) / 2;
+  [[.34, C.lime], [.52, "#fff"], [.66, C.lime]].forEach(([h, col], i) => { rr(ctx, x0 + i * (bw + gap), base - s * h, bw, s * h, bw / 2); ctx.fillStyle = col; ctx.fill(); });
+}
+function flag(ctx, c, cx, cy, r) {
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = CCY[c] || "#64748b"; ctx.fill();
+  txt(ctx, CC2[c] || c.slice(0, 2), cx, cy + 1, `700 ${Math.round(r * .78)}px Sora`, "#fff", "center", "middle");
+}
+function header(ctx, W, x, y, s) {
+  const pw = pill2(ctx, "BIAS DELLA SETTIMANA", x, y + 18 * s, s);
+  logo(ctx, W - x - 48 * s, y, 48 * s);
+  txt(ctx, "PRV Board", W - x - 60 * s, y + 31 * s, `600 ${26 * s}px Sora`, C.ink, "right");
+  txt(ctx, "Dove punta il mercato", x, y + 118 * s, `700 ${60 * s}px Sora`, C.ink);
+  txt(ctx, `Settimana ${D.week.label}`, x, y + 166 * s, `500 ${28 * s}px Inter`, C.mute);
+  return y + 205 * s;
+}
+function pill2(ctx, s, x, y, k) { ctx.font = `700 ${18 * k}px Inter`; const w = ctx.measureText(s).width + 36 * k, h = 38 * k; rr(ctx, x, y - h / 2, w, h, h / 2); ctx.fillStyle = "rgba(217,245,107,.13)"; ctx.fill(); txt(ctx, s, x + w / 2, y + 1, `700 ${18 * k}px Inter`, C.lime, "center", "middle"); return w; }
+function strengthBlock(ctx, x, y, w, h, s) {
+  rr(ctx, x, y, w, h, 28 * s); ctx.fillStyle = C.card; ctx.fill(); ctx.strokeStyle = C.line; ctx.lineWidth = 2; ctx.stroke();
+  const p = 32 * s;
+  txt(ctx, "Forza delle valute", x + p, y + p + 26 * s, `600 ${28 * s}px Sora`, C.ink);
+  txt(ctx, "macro + COT · da −10 a +10", x + w - p, y + p + 24 * s, `500 ${19 * s}px Inter`, C.mute, "right");
+  const top = y + p + 58 * s, rows = D.strength.length, rh = (h - (top - y) - p * .6) / rows;
+  const bx0 = x + p + 200 * s, bx1 = x + w - p - 80 * s, mid = (bx0 + bx1) / 2, half = (bx1 - bx0) / 2;
+  ctx.strokeStyle = "rgba(255,255,255,.12)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(mid, top + 4); ctx.lineTo(mid, top + rows * rh - 4); ctx.stroke();
+  D.strength.forEach((r, i) => {
+    const cy = top + rh * i + rh / 2;
+    txt(ctx, String(i + 1), x + p, cy + 1, `500 ${19 * s}px "IBM Plex Mono"`, C.mute, "left", "middle");
+    flag(ctx, r.c, x + p + 52 * s, cy, 17 * s);
+    txt(ctx, r.c, x + p + 82 * s, cy + 1, `600 ${27 * s}px Sora`, C.ink, "left", "middle");
+    const bw = Math.min(1, Math.abs(r.v) / 10) * half, bh = Math.min(26 * s, rh * .5);
+    if (bw > 0) {
+      const g = ctx.createLinearGradient(r.v > 0 ? mid : mid - bw, 0, r.v > 0 ? mid + bw : mid, 0);
+      if (r.v > 0) { g.addColorStop(0, "rgba(31,176,111,.35)"); g.addColorStop(1, C.up); } else { g.addColorStop(0, C.dn); g.addColorStop(1, "rgba(240,86,74,.35)"); }
+      rr(ctx, r.v > 0 ? mid : mid - bw, cy - bh / 2, Math.max(bw, 6), bh, bh / 2); ctx.fillStyle = g; ctx.fill();
+    }
+    txt(ctx, sg(r.v), x + w - p, cy + 1, `600 ${27 * s}px "IBM Plex Mono"`, r.v > 0 ? C.up : r.v < 0 ? C.dn : C.mute, "right", "middle");
+  });
+}
+function setupsBlock(ctx, x, y, w, h, s, stacked) {
+  rr(ctx, x, y, w, h, 28 * s); ctx.fillStyle = C.card; ctx.fill(); ctx.strokeStyle = C.line; ctx.lineWidth = 2; ctx.stroke();
+  const p = 32 * s;
+  txt(ctx, "Setup più forti", x + p, y + p + 26 * s, `600 ${28 * s}px Sora`, C.ink);
+  const top = y + p + 52 * s, cols = stacked ? 1 : 2, gap = 18 * s;
+  const cw = (w - 2 * p - (cols - 1) * gap) / cols;
+  const groups = [["RIALZISTI", C.up, D.bulls], ["RIBASSISTI", C.dn, D.bears]];
+  const area = y + h - p - top;
+  groups.forEach(([lab, col, list], gi) => {
+    const gx = stacked ? x + p : x + p + gi * (cw + gap);
+    const gy = stacked ? top + gi * (area / 2) : top;
+    const gh = stacked ? area / 2 : area;
+    ctx.beginPath(); ctx.arc(gx + 7 * s, gy + 18 * s, 7 * s, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+    txt(ctx, lab, gx + 22 * s, gy + 25 * s, `700 ${18 * s}px Inter`, col);
+    const n = Math.max(1, list.length), ih = (gh - 44 * s - (n - 1) * 12 * s) / 3;
+    if (!list.length) txt(ctx, "Nessun setup netto", gx, gy + 80 * s, `500 ${22 * s}px Inter`, C.mute);
+    list.forEach((it, k) => {
+      const iy = gy + 44 * s + k * (ih + 12 * s);
+      rr(ctx, gx, iy, cw, ih, 18 * s); ctx.fillStyle = "#1c1f25"; ctx.fill();
+      const ip = 18 * s, fy = iy + 28 * s;
+      flag(ctx, it.base, gx + ip + 14 * s, fy, 14 * s); flag(ctx, it.quote, gx + ip + 36 * s, fy, 14 * s);
+      txt(ctx, it.name, gx + ip + 60 * s, fy + 1, `600 ${24 * s}px Sora`, C.ink, "left", "middle");
+      const big = Math.max(26 * s, Math.min(44 * s, ih - 58 * s)), by = iy + ih - 15 * s;
+      // misure: se non c'è spazio l'etichetta si rimpicciolisce e, al limite, si toglie "/ max"
+      ctx.font = `600 ${big}px "IBM Plex Mono"`; const sw = ctx.measureText(sg(it.total)).width;
+      ctx.font = `500 ${18 * s}px "IBM Plex Mono"`; const mw = ctx.measureText(` / ${it.max}`).width;
+      let ps = 17 * s; ctx.font = `600 ${ps}px Inter`; let pw = ctx.measureText(it.bias).width + ps * 1.2;
+      if (sw + mw + pw + 2 * ip + 14 * s > cw) { ps = 14 * s; ctx.font = `600 ${ps}px Inter`; pw = ctx.measureText(it.bias).width + ps * 1.2; }
+      const showMax = sw + mw + pw + 2 * ip + 14 * s <= cw;
+      const bw = txt(ctx, sg(it.total), gx + ip, by, `600 ${big}px "IBM Plex Mono"`, it.total > 0 ? C.up : C.dn);
+      if (showMax) txt(ctx, ` / ${it.max}`, gx + ip + bw, by, `500 ${18 * s}px "IBM Plex Mono"`, C.mute);
+      pill(ctx, it.bias, gx + cw - ip, by - big * .32, it.bias, ps, true);
+    });
+  });
+}
+function othersBlock(ctx, x, y, w, h, s) {
+  rr(ctx, x, y, w, h, 28 * s); ctx.fillStyle = C.card; ctx.fill(); ctx.strokeStyle = C.line; ctx.lineWidth = 2; ctx.stroke();
+  const p = 32 * s;
+  txt(ctx, "Indici e materie prime", x + p, y + p + 26 * s, `600 ${28 * s}px Sora`, C.ink);
+  const top = y + p + 54 * s, n = Math.max(1, D.others.length), rh = (h - (top - y) - p * .5) / n;
+  if (!D.others.length) txt(ctx, "Nessun bias netto", x + p, top + 30 * s, `500 ${22 * s}px Inter`, C.mute);
+  D.others.forEach((it, i) => {
+    const cy = top + rh * i + rh / 2;
+    txt(ctx, it.name, x + p, cy + 1, `600 ${25 * s}px Sora`, C.ink, "left", "middle");
+    pill(ctx, it.bias, x + w - p - 110 * s, cy, it.bias, 17 * s, true);
+    txt(ctx, `${sg(it.total)}/${it.max}`, x + w - p, cy + 1, `600 ${24 * s}px "IBM Plex Mono"`, it.total > 0 ? C.up : C.dn, "right", "middle");
+  });
+}
+function footer(ctx, W, H, x, s) {
+  const y = H - x;
+  ctx.strokeStyle = C.line; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y - 74 * s); ctx.lineTo(W - x, y - 74 * s); ctx.stroke();
+  txt(ctx, "board.prvjournal.com", x, y - 30 * s, `700 ${28 * s}px Sora`, C.lime);
+  txt(ctx, `Macro · COT CFTC${D.cotDate ? " al " + shortDate(D.cotDate) : ""} · Stagionalità`, W - x, y - 32 * s, `500 ${19 * s}px Inter`, C.mute, "right");
+  txt(ctx, "Contenuto informativo, non è un consiglio finanziario.", W - x, y - 2 * s, `500 ${17 * s}px Inter`, C.mute, "right");
+}
+function draw() {
+  const [W, H] = FMT[fmt], cv = $("#cv"), ctx = cv.getContext("2d");
+  cv.width = W; cv.height = H;
+  ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+  const g = ctx.createRadialGradient(W * .9, 0, 0, W * .9, 0, W * .7); g.addColorStop(0, "rgba(217,245,107,.10)"); g.addColorStop(1, "rgba(217,245,107,0)");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  const s = 1, M = fmt === "x" ? 56 : 64;
+  let y = header(ctx, W, M, M, s);
+  const footerH = 110;
+  if (fmt === "x") {
+    const avail = H - y - footerH - M + 20, lw = (W - 2 * M - 24) * .5;
+    strengthBlock(ctx, M, y, lw, avail, s); setupsBlock(ctx, M + lw + 24, y, W - 2 * M - lw - 24, avail, s, false);
+  } else if (fmt === "post") {
+    const avail = H - y - footerH - M + 20, sh = avail * .46;
+    strengthBlock(ctx, M, y, W - 2 * M, sh, s); setupsBlock(ctx, M, y + sh + 22, W - 2 * M, avail - sh - 22, s, false);
+  } else {
+    const avail = H - y - footerH - M + 20, sh = avail * .38, uh = avail * .38;
+    strengthBlock(ctx, M, y, W - 2 * M, sh, s);
+    setupsBlock(ctx, M, y + sh + 22, W - 2 * M, uh, s, false);
+    othersBlock(ctx, M, y + sh + uh + 44, W - 2 * M, avail - sh - uh - 44, s);
+  }
+  footer(ctx, W, H, M, s);
+  if (D.demo) {       // avviso ben visibile: dati non reali
+    ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(-Math.PI / 9);
+    txt(ctx, "DATI DIMOSTRATIVI", 0, 0, `800 ${Math.round(W / 9)}px Sora`, "rgba(240,86,74,.28)", "center", "middle"); ctx.restore();
+  }
+}
+
+/* ---------------------------------------------------------------- testo del post */
+function caption() {
+  const st = D.strength, top3 = st.slice(0, 3), low3 = st.slice(-3).reverse();
+  const L = (list) => list.map((x) => `${x.name} ${sg(x.total)}`).join(" · ") || "—";
+  return [
+    `📊 Bias della settimana · ${D.week.label}`,
+    ``,
+    `💪 Valute più forti: ${top3.map((x) => `${x.c} (${sg(x.v)})`).join(", ")}`,
+    `🔻 Valute più deboli: ${low3.map((x) => `${x.c} (${sg(x.v)})`).join(", ")}`,
+    ``,
+    `🟢 Setup rialzisti: ${L(D.bulls)}`,
+    `🔴 Setup ribassisti: ${L(D.bears)}`,
+    ``,
+    `Punteggio calcolato su dati macro, posizionamento COT (CFTC) e stagionalità.`,
+    `Analisi completa e gratuita 👉 board.prvjournal.com`,
+    ``,
+    `⚠️ Contenuto informativo, non è un consiglio finanziario.`,
+    ``,
+    `#forex #trading #cotreport #macro #stagionalità #bias #prvboard`,
+  ].join("\n");
+}
+
+/* ---------------------------------------------------------------- interfaccia */
+$("#fmt").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; fmt = b.dataset.f; document.querySelectorAll("#fmt button").forEach((x) => x.classList.toggle("on", x === b)); draw(); };
+$("#dl").onclick = () => $("#cv").toBlob((blob) => {
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `bias-settimana-${D.week.iso}-${fmt}.png`;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
+}, "image/png");
+$("#copy").onclick = async () => {
+  const t = $("#cap").value;
+  try { await navigator.clipboard.writeText(t); $("#copied").textContent = "Testo copiato ✓"; }
+  catch { $("#cap").select(); document.execCommand("copy"); $("#copied").textContent = "Testo selezionato: premi Ctrl+C / Cmd+C se non è stato copiato."; }
+};
+(async () => {
+  try {
+    D = await loadData();
+    await Promise.all(["600 28px Sora", "700 60px Sora", "800 60px Sora", "500 20px Inter", "600 20px Inter", "700 20px Inter", "500 20px 'IBM Plex Mono'", "600 20px 'IBM Plex Mono'"].map((f) => document.fonts.load(f)));
+    $("#sub").textContent = `Dati al ${shortDate(D.asOf)} · settimana ${D.week.label}`;
+    if (D.demo) $("#warn").innerHTML = `<div class="warn"><b>Attenzione:</b> il Board sta usando dati dimostrativi. L'immagine riporta la scritta "DATI DIMOSTRATIVI": non pubblicarla finché la pipeline non scarica i dati reali.</div>`;
+    $("#cap").value = caption();
+    draw();
+  } catch (e) { $("#sub").textContent = "Impossibile leggere i dati del Board: " + e.message; }
+})();
+</script>
+</body>
+</html>

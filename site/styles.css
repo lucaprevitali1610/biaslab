@@ -449,3 +449,5 @@ details summary::marker{color:var(--faint)}
 .tv-consent .ttl{font:600 16px var(--head);color:var(--ink);margin-bottom:6px}
 .flink{background:none;border:0;padding:0;font:inherit;color:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
 .flink:hover{color:var(--ink)}
+
+#donateWrap[hidden]{display:none}

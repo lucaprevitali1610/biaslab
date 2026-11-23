@@ -839,6 +839,10 @@ $("#themeBtn").onclick = () => {
   if (open && sel) openDrawer(sel);
 };
 
+/* link per le donazioni (Ko-fi, PayPal, ecc.): finché è vuoto resta nascosto */
+const DONATE_URL = "";
+if (DONATE_URL) { $("#donateLink").href = DONATE_URL; $("#donateWrap").hidden = false; }
+
 /* banner del consenso: compare finché non scegli; "Preferenze cookie" nel piè di pagina lo riapre */
 $("#consentYes").onclick = () => onConsent("yes");
 $("#consentNo").onclick = () => onConsent("no");
