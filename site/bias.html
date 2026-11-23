@@ -30,10 +30,16 @@
 <div class="gen">
   <div class="gen-h">
     <div><div class="eyebrow">PRV Board · strumento interno</div><h1>Bias della settimana</h1><div class="sub" id="sub">Caricamento dati…</div></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <div class="seg" id="sty">
+      <button data-t="oro" class="on">Stile PRV oro</button>
+      <button data-t="board">Stile Board</button>
+    </div>
     <div class="seg" id="fmt">
       <button data-f="post" class="on">Post 1080×1350</button>
       <button data-f="story">Storia 1080×1920</button>
       <button data-f="x">X 1600×900</button>
+    </div>
     </div>
   </div>
   <div id="warn"></div>
@@ -57,7 +63,12 @@
 <script>
 "use strict";
 const $ = (s) => document.querySelector(s);
-const C = { bg: "#0e0f12", card: "#16181d", line: "#272a32", ink: "#eceef2", ink2: "#c4c7cf", mute: "#8d919b", lime: "#d9f56b", up: "#1fb06f", dn: "#f0564a" };
+const THEMES = {
+  oro:   { bg: "#0a0908", card: "rgba(20,18,15,.86)", item: "rgba(255,240,200,.04)", line: "rgba(194,176,126,.22)", ink: "#f4efe4", ink2: "#d2cbb9", mute: "#9a937f", lime: "#d8c38c", accentBg: "rgba(194,176,126,.14)", glow: "194,176,126", up: "#2fbf6f", dn: "#ef5a4a", marble: true },
+  board: { bg: "#0e0f12", card: "#16181d", item: "#1c1f25", line: "#272a32", ink: "#eceef2", ink2: "#c4c7cf", mute: "#8d919b", lime: "#d9f56b", accentBg: "rgba(217,245,107,.13)", glow: "217,245,107", up: "#1fb06f", dn: "#f0564a", marble: false },
+};
+let theme = "oro", C = THEMES.oro;
+const prvLogo = new Image(); prvLogo.src = "prv-logo.svg";
 const CCY = { USD: "#3b5bc4", EUR: "#2e6ae6", GBP: "#7a3fd1", JPY: "#d6453d", CHF: "#e27b1f", CAD: "#c2306b", AUD: "#0f8a6a", NZD: "#4b5160" };
 const CC2 = { USD: "US", EUR: "EU", GBP: "GB", JPY: "JP", CHF: "CH", CAD: "CA", AUD: "AU", NZD: "NZ" };
 const MESI = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
@@ -107,13 +118,23 @@ function flag(ctx, c, cx, cy, r) {
 }
 function header(ctx, W, x, y, s) {
   const pw = pill2(ctx, "BIAS DELLA SETTIMANA", x, y + 18 * s, s);
-  logo(ctx, W - x - 48 * s, y, 48 * s);
-  txt(ctx, "PRV Board", W - x - 60 * s, y + 31 * s, `600 ${26 * s}px Sora`, C.ink, "right");
-  txt(ctx, "Dove punta il mercato", x, y + 118 * s, `700 ${60 * s}px Sora`, C.ink);
+  if (theme === "oro" && prvLogo.complete && prvLogo.naturalWidth) {
+    const lw = 74 * s, lh = lw * prvLogo.naturalHeight / prvLogo.naturalWidth;
+    ctx.drawImage(prvLogo, W - x - lw, y - 4 * s, lw, lh);
+    txt(ctx, "PRV Board", W - x - lw - 16 * s, y + 31 * s, `600 ${26 * s}px Sora`, C.ink, "right");
+  } else {
+    logo(ctx, W - x - 48 * s, y, 48 * s);
+    txt(ctx, "PRV Board", W - x - 60 * s, y + 31 * s, `600 ${26 * s}px Sora`, C.ink, "right");
+  }
+  if (theme === "oro") {
+    ctx.font = `700 ${60 * s}px Sora`; const tw = ctx.measureText("Dove punta il mercato").width;
+    const gg = ctx.createLinearGradient(x, 0, x + tw, 0); gg.addColorStop(0, "#efe2b8"); gg.addColorStop(.45, "#c2b07e"); gg.addColorStop(1, "#8a6d33");
+    txt(ctx, "Dove punta il mercato", x, y + 118 * s, `700 ${60 * s}px Sora`, gg);
+  } else txt(ctx, "Dove punta il mercato", x, y + 118 * s, `700 ${60 * s}px Sora`, C.ink);
   txt(ctx, `Settimana ${D.week.label}`, x, y + 166 * s, `500 ${28 * s}px Inter`, C.mute);
   return y + 205 * s;
 }
-function pill2(ctx, s, x, y, k) { ctx.font = `700 ${18 * k}px Inter`; const w = ctx.measureText(s).width + 36 * k, h = 38 * k; rr(ctx, x, y - h / 2, w, h, h / 2); ctx.fillStyle = "rgba(217,245,107,.13)"; ctx.fill(); txt(ctx, s, x + w / 2, y + 1, `700 ${18 * k}px Inter`, C.lime, "center", "middle"); return w; }
+function pill2(ctx, s, x, y, k) { ctx.font = `700 ${18 * k}px Inter`; const w = ctx.measureText(s).width + 36 * k, h = 38 * k; rr(ctx, x, y - h / 2, w, h, h / 2); ctx.fillStyle = C.accentBg; ctx.fill(); txt(ctx, s, x + w / 2, y + 1, `700 ${18 * k}px Inter`, C.lime, "center", "middle"); return w; }
 function strengthBlock(ctx, x, y, w, h, s) {
   rr(ctx, x, y, w, h, 28 * s); ctx.fillStyle = C.card; ctx.fill(); ctx.strokeStyle = C.line; ctx.lineWidth = 2; ctx.stroke();
   const p = 32 * s;
@@ -154,7 +175,7 @@ function setupsBlock(ctx, x, y, w, h, s, stacked) {
     if (!list.length) txt(ctx, "Nessun setup netto", gx, gy + 80 * s, `500 ${22 * s}px Inter`, C.mute);
     list.forEach((it, k) => {
       const iy = gy + 44 * s + k * (ih + 12 * s);
-      rr(ctx, gx, iy, cw, ih, 18 * s); ctx.fillStyle = "#1c1f25"; ctx.fill();
+      rr(ctx, gx, iy, cw, ih, 18 * s); ctx.fillStyle = C.item; ctx.fill();
       const ip = 18 * s, fy = iy + 28 * s;
       flag(ctx, it.base, gx + ip + 14 * s, fy, 14 * s); flag(ctx, it.quote, gx + ip + 36 * s, fy, 14 * s);
       txt(ctx, it.name, gx + ip + 60 * s, fy + 1, `600 ${24 * s}px Sora`, C.ink, "left", "middle");
@@ -191,11 +212,30 @@ function footer(ctx, W, H, x, s) {
   txt(ctx, `Macro · COT CFTC${D.cotDate ? " al " + shortDate(D.cotDate) : ""} · Stagionalità`, W - x, y - 32 * s, `500 ${19 * s}px Inter`, C.mute, "right");
   txt(ctx, "Contenuto informativo, non è un consiglio finanziario.", W - x, y - 2 * s, `500 ${17 * s}px Inter`, C.mute, "right");
 }
+/* marmo nero con venature d'oro, generato (sempre uguale per la stessa settimana) */
+function marble(ctx, W, H) {
+  let seed = 0; for (const ch of D.week.iso) seed = (seed * 31 + ch.charCodeAt(0)) % 2147483647;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const base = ctx.createLinearGradient(0, 0, W, H); base.addColorStop(0, "#0d0c0a"); base.addColorStop(.5, "#080706"); base.addColorStop(1, "#0f0d0a");
+  ctx.fillStyle = base; ctx.fillRect(0, 0, W, H);
+  for (let k = 0; k < 2600; k++) { ctx.fillStyle = `rgba(255,255,255,${rnd() * .025})`; ctx.fillRect(rnd() * W, rnd() * H, 1.5, 1.5); }   // grana
+  const vein = (x, y, ang, len, width, alpha, depth) => {
+    ctx.beginPath(); ctx.moveTo(x, y);
+    for (let i = 0; i < len; i++) {
+      ang += (rnd() - .5) * .5; x += Math.cos(ang) * 9; y += Math.sin(ang) * 9; ctx.lineTo(x, y);
+      if (depth < 2 && rnd() < .025) vein(x, y, ang + (rnd() - .5) * 1.6, len * .45, width * .6, alpha * .8, depth + 1);
+    }
+    ctx.strokeStyle = `rgba(214,184,110,${alpha})`; ctx.lineWidth = width; ctx.shadowColor = `rgba(230,195,110,${alpha})`; ctx.shadowBlur = width * 6; ctx.stroke(); ctx.shadowBlur = 0;
+  };
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  for (let v = 0; v < 6; v++) vein(rnd() * W, rnd() < .5 ? -10 : rnd() * H, .6 + rnd() * 1.2, 120 + rnd() * 160, .8 + rnd() * 1.8, .18 + rnd() * .35, 0);
+}
 function draw() {
   const [W, H] = FMT[fmt], cv = $("#cv"), ctx = cv.getContext("2d");
   cv.width = W; cv.height = H;
   ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
-  const g = ctx.createRadialGradient(W * .9, 0, 0, W * .9, 0, W * .7); g.addColorStop(0, "rgba(217,245,107,.10)"); g.addColorStop(1, "rgba(217,245,107,0)");
+  if (C.marble) marble(ctx, W, H);
+  const g = ctx.createRadialGradient(W * .9, 0, 0, W * .9, 0, W * .7); g.addColorStop(0, `rgba(${C.glow},.10)`); g.addColorStop(1, `rgba(${C.glow},0)`);
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   const s = 1, M = fmt === "x" ? 56 : 64;
   let y = header(ctx, W, M, M, s);
@@ -237,14 +277,15 @@ function caption() {
     ``,
     `⚠️ Contenuto informativo, non è un consiglio finanziario.`,
     ``,
-    `#forex #trading #cotreport #macro #stagionalità #bias #prvboard`,
+    `#forex #trading #cotreport #macro #stagionalità #bias #prvboard #prvtradingclub`,
   ].join("\n");
 }
 
 /* ---------------------------------------------------------------- interfaccia */
+$("#sty").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; theme = b.dataset.t; C = THEMES[theme]; document.querySelectorAll("#sty button").forEach((x) => x.classList.toggle("on", x === b)); draw(); };
 $("#fmt").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; fmt = b.dataset.f; document.querySelectorAll("#fmt button").forEach((x) => x.classList.toggle("on", x === b)); draw(); };
 $("#dl").onclick = () => $("#cv").toBlob((blob) => {
-  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `bias-settimana-${D.week.iso}-${fmt}.png`;
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `bias-settimana-${D.week.iso}-${fmt}-${theme}.png`;
   document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
 }, "image/png");
 $("#copy").onclick = async () => {
@@ -258,6 +299,7 @@ $("#copy").onclick = async () => {
     await Promise.all(["600 28px Sora", "700 60px Sora", "800 60px Sora", "500 20px Inter", "600 20px Inter", "700 20px Inter", "500 20px 'IBM Plex Mono'", "600 20px 'IBM Plex Mono'"].map((f) => document.fonts.load(f)));
     $("#sub").textContent = `Dati al ${shortDate(D.asOf)} · settimana ${D.week.label}`;
     if (D.demo) $("#warn").innerHTML = `<div class="warn"><b>Attenzione:</b> il Board sta usando dati dimostrativi. L'immagine riporta la scritta "DATI DIMOSTRATIVI": non pubblicarla finché la pipeline non scarica i dati reali.</div>`;
+    await new Promise((r) => (prvLogo.complete ? r() : (prvLogo.onload = prvLogo.onerror = r)));
     $("#cap").value = caption();
     draw();
   } catch (e) { $("#sub").textContent = "Impossibile leggere i dati del Board: " + e.message; }
