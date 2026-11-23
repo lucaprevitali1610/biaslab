@@ -198,7 +198,7 @@ async function load() {
     $("#app").innerHTML = `<div class="card empty">Dati non trovati. Esegui <code>python pipeline/build.py</code> per generarli.</div>`; return;
   }
   $("#site-name").textContent = S.meta.site;
-  document.title = `${S.meta.site} — PRV Board`;
+  // titolo della pagina fisso (impostato in index.html, usato da Google)
   if (S.board.demo) $("#demo").innerHTML = `<div class="demo-banner"><b>Dati dimostrativi.</b> Sono numeri sintetici per provare l'interfaccia: i dati reali arrivano quando la pipeline gira online.</div>`;
   const g = new Date(S.board.generated);
   $("#stamp").textContent = `Aggiornato il ${g.toLocaleDateString("it-IT", { day: "numeric", month: "short" })}, ${g.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
