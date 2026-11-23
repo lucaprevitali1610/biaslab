@@ -53,9 +53,13 @@
       </div>
       <div class="card">
         <h2>Testo del post</h2>
+        <div class="seg" id="net" style="margin-bottom:10px">
+          <button data-n="ig" class="on">Instagram</button><button data-n="x">X</button><button data-n="tg">Telegram</button>
+        </div>
         <textarea id="cap" spellcheck="false"></textarea>
         <div class="row" style="margin-top:10px"><button class="btn" id="copy">Copia testo</button></div>
-        <p class="note" id="copied" style="margin:8px 0 0"></p>
+        <p class="note" id="count" style="margin:8px 0 0"></p>
+        <p class="note" id="copied" style="margin:4px 0 0"></p>
       </div>
     </div>
   </div>
@@ -260,9 +264,39 @@ function draw() {
 }
 
 /* ---------------------------------------------------------------- testo del post */
+/* testo del post, adattato al social */
+let net = "ig";
 function caption() {
   const st = D.strength, top3 = st.slice(0, 3), low3 = st.slice(-3).reverse();
-  const L = (list) => list.map((x) => `${x.name} ${sg(x.total)}`).join(" · ") || "—";
+  const L = (list, n = 3) => list.slice(0, n).map((x) => `${x.name} ${sg(x.total)}`).join(" · ") || "—";
+  if (net === "x") {
+    // X: massimo 280 caratteri (i link contano 23), poche emoji, 1-2 hashtag
+    const head = `Bias forex della settimana (${D.week.label})`;
+    const tries = [
+      [head, "", `Forti: ${top3.map((x) => x.c).join(", ")}`, `Deboli: ${low3.map((x) => x.c).join(", ")}`, "",
+       `▲ Rialziste: ${L(D.bulls, 2)}`, `▼ Ribassiste: ${L(D.bears, 2)}`, "", "Macro + COT + stagionalità, gratis:", "board.prvjournal.com", "", "Non è un consiglio finanziario. #forex #COT"],
+      [head, "", `Forti: ${top3.map((x) => x.c).join(", ")} · Deboli: ${low3.map((x) => x.c).join(", ")}`,
+       `▲ ${L(D.bulls, 1)} · ▼ ${L(D.bears, 1)}`, "", "board.prvjournal.com #forex"],
+    ];
+    for (const t of tries) { const s = t.join("\n"); if (xLen(s) <= 280) return s; }
+    return tries[1].join("\n");
+  }
+  if (net === "tg") {
+    return [
+      `📊 *Bias della settimana* · ${D.week.label}`,
+      ``,
+      `*Forza delle valute*`,
+      ...st.map((x, i) => `${i + 1}. ${x.c}  ${sg(x.v)}`),
+      ``,
+      `🟢 *Setup rialzisti*`, ...D.bulls.map((x) => `• ${x.name}  ${sg(x.total)}/${x.max} · ${x.bias}`),
+      ``,
+      `🔴 *Setup ribassisti*`, ...D.bears.map((x) => `• ${x.name}  ${sg(x.total)}/${x.max} · ${x.bias}`),
+      ``,
+      `Macro, COT (CFTC) e stagionalità in un punteggio. Analisi completa e gratuita: board.prvjournal.com`,
+      ``,
+      `_Contenuto informativo, non è un consiglio finanziario._`,
+    ].join("\n");
+  }
   return [
     `📊 Bias della settimana · ${D.week.label}`,
     ``,
@@ -273,17 +307,27 @@ function caption() {
     `🔴 Setup ribassisti: ${L(D.bears)}`,
     ``,
     `Punteggio calcolato su dati macro, posizionamento COT (CFTC) e stagionalità.`,
-    `Analisi completa e gratuita 👉 board.prvjournal.com`,
+    `Analisi completa e gratuita: link in bio 👉 board.prvjournal.com`,
     ``,
     `⚠️ Contenuto informativo, non è un consiglio finanziario.`,
     ``,
     `#forex #trading #cotreport #macro #stagionalità #bias #prvboard #prvtradingclub`,
   ].join("\n");
 }
+/* lunghezza come la conta X: ogni link vale 23 caratteri */
+function xLen(s) { return [...s.replace(/\b[\w.-]+\.(com|net|org|io)(\/\S*)?/g, "x".repeat(23))].length; }
+function showCaption() {
+  $("#cap").value = caption();
+  const n = net === "x" ? xLen($("#cap").value) : [...$("#cap").value].length;
+  $("#count").textContent = net === "x" ? `${n}/280 caratteri (limite di X)` : net === "ig" ? `${n} caratteri · su Instagram il link non è cliccabile nei post: per questo «link in bio»` : `${n} caratteri · formattazione Telegram (*grassetto*, _corsivo_)`;
+}
+
 
 /* ---------------------------------------------------------------- interfaccia */
+$("#net").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; net = b.dataset.n; document.querySelectorAll("#net button").forEach((x) => x.classList.toggle("on", x === b)); showCaption(); };
+$("#cap").addEventListener("input", () => { const n = net === "x" ? xLen($("#cap").value) : [...$("#cap").value].length; if (net === "x") $("#count").textContent = `${n}/280 caratteri (limite di X)` + (n > 280 ? " — troppo lungo" : ""); });
 $("#sty").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; theme = b.dataset.t; C = THEMES[theme]; document.querySelectorAll("#sty button").forEach((x) => x.classList.toggle("on", x === b)); draw(); };
-$("#fmt").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; fmt = b.dataset.f; document.querySelectorAll("#fmt button").forEach((x) => x.classList.toggle("on", x === b)); draw(); };
+$("#fmt").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; fmt = b.dataset.f; document.querySelectorAll("#fmt button").forEach((x) => x.classList.toggle("on", x === b)); draw(); const want = fmt === "x" ? "x" : "ig"; if ((want === "x") !== (net === "x")) document.querySelector(`#net [data-n=${want}]`).click(); };
 $("#dl").onclick = () => $("#cv").toBlob((blob) => {
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `bias-settimana-${D.week.iso}-${fmt}-${theme}.png`;
   document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
@@ -300,7 +344,7 @@ $("#copy").onclick = async () => {
     $("#sub").textContent = `Dati al ${shortDate(D.asOf)} · settimana ${D.week.label}`;
     if (D.demo) $("#warn").innerHTML = `<div class="warn"><b>Attenzione:</b> il Board sta usando dati dimostrativi. L'immagine riporta la scritta "DATI DIMOSTRATIVI": non pubblicarla finché la pipeline non scarica i dati reali.</div>`;
     await new Promise((r) => (prvLogo.complete ? r() : (prvLogo.onload = prvLogo.onerror = r)));
-    $("#cap").value = caption();
+    showCaption();
     draw();
   } catch (e) { $("#sub").textContent = "Impossibile leggere i dati del Board: " + e.message; }
 })();
