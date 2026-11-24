@@ -42,6 +42,7 @@
     </div>
     <div class="seg" id="fmt">
       <button data-f="carousel" class="on">Carosello IG (5)</button>
+      <button data-f="video">Video Reel/TikTok 15s</button>
       <button data-f="post">Post 1080×1350</button>
       <button data-f="story">Storia 1080×1920</button>
       <button data-f="x">X 1600×900</button>
@@ -56,6 +57,7 @@
       <div class="card">
         <h2>Immagine</h2>
         <div class="row"><button class="btn" id="dl">Scarica PNG <span class="arr">↓</span></button></div>
+        <p class="note" id="vstat" style="margin:10px 0 0;color:var(--ink)"></p>
         <p class="note" style="margin:10px 0 0">Usa i dati del Board aggiornati all'ultima esecuzione della pipeline. Ricarica la pagina per i dati più recenti.</p>
       </div>
       <div class="card">
@@ -406,7 +408,159 @@ async function downloadCarousel() {
   document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
 
+
+/* ================================================================ VIDEO 15 s (Reels · TikTok · Shorts, 1080×1920) */
+const VW = 1080, VH = 1920, VDUR = 15;
+// zona sicura: TikTok e Reels coprono circa il 18% in basso e una colonna a destra
+const SAFE = { top: 230, bottom: 1500, left: 96, right: 930 };
+let vRaf = 0, vStart = 0, recording = false, vMsg = "";
+const clamp01 = (x) => Math.max(0, Math.min(1, x));
+const easeOut = (t) => 1 - Math.pow(1 - clamp01(t), 3);
+const easeInOut = (t) => { t = clamp01(t); return t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; };
+// scene: [inizio, fine] in secondi
+const SCENES = [[0, 3.2], [3.2, 7.4], [7.4, 10.4], [10.4, 13.2], [13.2, 15]];
+
+function vBg(ctx, t) {
+  const z = 1.06 + t / VDUR * .1;              // zoom lento sul marmo
+  if (marbleImg.complete && marbleImg.naturalWidth) {
+    const r = Math.max(VW / marbleImg.naturalWidth, VH / marbleImg.naturalHeight) * z, w = marbleImg.naturalWidth * r, h = marbleImg.naturalHeight * r;
+    ctx.drawImage(marbleImg, (VW - w) / 2 - t * 6, (VH - h) / 2 - t * 10, w, h);
+  } else { ctx.fillStyle = "#0b0a09"; ctx.fillRect(0, 0, VW, VH); }
+  ctx.fillStyle = "rgba(6,6,7,.55)"; ctx.fillRect(0, 0, VW, VH);
+  const v = ctx.createRadialGradient(VW / 2, VH * .45, VH * .2, VW / 2, VH * .45, VH * .75); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,.6)");
+  ctx.fillStyle = v; ctx.fillRect(0, 0, VW, VH);
+}
+function vFrame(ctx, t) {
+  spaced(ctx, "PRV TRADING CLUB", VW / 2, 150, `500 24px ${SANS}`, G.gold, 7, "center");
+  // barra di avanzamento sottile in alto
+  ctx.fillStyle = "rgba(214,191,134,.18)"; ctx.fillRect(SAFE.left, 180, SAFE.right - SAFE.left, 2);
+  ctx.fillStyle = G.gold; ctx.fillRect(SAFE.left, 180, (SAFE.right - SAFE.left) * clamp01(t / VDUR), 2);
+}
+function vFade(p) { return easeOut(p / .18) * (1 - easeInOut((p - .86) / .14)); }   // entrata e uscita di ogni scena
+function cTitle(ctx, y, a, b, size, alpha) {
+  ctx.globalAlpha = alpha; ctx.textBaseline = "alphabetic"; ctx.textAlign = "left";
+  ctx.font = `500 ${size}px ${SERIF}`; const wa = ctx.measureText(a + " ").width;
+  ctx.font = `italic 500 ${size}px ${SERIF}`; const wb = ctx.measureText(b).width;
+  const x = (VW - wa - wb) / 2;
+  ctx.font = `500 ${size}px ${SERIF}`; ctx.fillStyle = G.ink; ctx.fillText(a + " ", x, y);
+  ctx.font = `italic 500 ${size}px ${SERIF}`; ctx.fillStyle = goldGrad(ctx, x + wa, x + wa + wb); ctx.fillText(b, x + wa, y);
+  ctx.globalAlpha = 1;
+}
+function sceneHook(ctx, p) {
+  const a = vFade(p), y0 = 20 * (1 - easeOut(p / .25));
+  ctx.globalAlpha = a; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  spaced(ctx, "IL PUNTO DEL LUNEDÌ", VW / 2, 640 + y0, `500 28px ${SANS}`, G.gold, 8, "center");
+  ctx.textAlign = "center"; ctx.font = `500 118px ${SERIF}`; ctx.fillStyle = G.ink; ctx.fillText("Dove punta", VW / 2, 800 + y0);
+  ctx.font = `italic 500 126px ${SERIF}`; ctx.fillStyle = goldGrad(ctx, VW / 2 - 320, VW / 2 + 320); ctx.fillText("il mercato?", VW / 2, 940 + y0);
+  const lw = 440 * easeOut((p - .2) / .35); hline(ctx, VW / 2 - lw / 2, VW / 2 + lw / 2, 1010, .7);
+  ctx.globalAlpha = a * easeOut((p - .3) / .3);
+  spaced(ctx, D.week.label.toUpperCase(), VW / 2, 1090, `500 32px ${SANS}`, G.ink, 7, "center");
+  spaced(ctx, "MACRO  ·  COT  ·  STAGIONALITÀ", VW / 2, 1160, `400 25px ${SANS}`, G.soft, 6, "center");
+  ctx.globalAlpha = 1;
+}
+function sceneStrength(ctx, p) {
+  const a = vFade(p);
+  cTitle(ctx, 470, "Forza delle", "valute", 82, a);
+  ctx.globalAlpha = a; spaced(ctx, "MACRO + COT  ·  DA −10 A +10", VW / 2, 530, `400 23px ${SANS}`, G.soft, 5, "center"); ctx.globalAlpha = 1;
+  const top = 640, rh = 104, x0 = 130, x1 = 950, mid = 610, half = 220;
+  D.strength.forEach((r, i) => {
+    const q = easeOut((p - .1 - i * .045) / .25), y = top + i * rh;
+    ctx.globalAlpha = a * q;
+    if (i) hline(ctx, x0, x1, y - rh / 2, .16);
+    ctx.textBaseline = "middle"; ctx.textAlign = "left";
+    ctx.font = `400 24px ${MONO}`; ctx.fillStyle = G.mute; ctx.fillText(String(i + 1).padStart(2, "0"), x0, y);
+    ctx.font = `500 52px ${SERIF}`; ctx.fillStyle = G.ink; ctx.fillText(r.c, x0 + 72 - 30 * (1 - q), y + 2);
+    ctx.fillStyle = "rgba(214,191,134,.3)"; ctx.fillRect(mid - .75, y - 26, 1.5, 52);
+    const w = Math.min(1, Math.abs(r.v) / 10) * half * easeOut((p - .2 - i * .045) / .3);
+    if (w > 0) {
+      if (r.v > 0) { const g = ctx.createLinearGradient(mid, 0, mid + w, 0); g.addColorStop(0, "rgba(214,191,134,.35)"); g.addColorStop(1, G.goldHi); ctx.fillStyle = g; }
+      else { const g = ctx.createLinearGradient(mid - w, 0, mid, 0); g.addColorStop(0, G.down); g.addColorStop(1, "rgba(168,115,95,.3)"); ctx.fillStyle = g; }
+      ctx.beginPath(); ctx.roundRect(r.v > 0 ? mid : mid - w, y - 5, w, 10, 5); ctx.fill();
+    }
+    ctx.textAlign = "right"; ctx.font = `500 34px ${MONO}`; ctx.fillStyle = r.v > 0 ? G.goldHi : r.v < 0 ? G.down : G.mute;
+    ctx.fillText((r.v > 0 ? "▲ +" : r.v < 0 ? "▼ -" : "") + Math.abs(r.v), x1, y + 1);
+  });
+  ctx.globalAlpha = 1;
+}
+function sceneSetups(ctx, p, bull) {
+  const a = vFade(p), list = bull ? D.bulls : D.bears;
+  cTitle(ctx, 500, "Setup", bull ? "rialzisti" : "ribassisti", 92, a);
+  ctx.globalAlpha = a; spaced(ctx, bull ? "▲  I PIÙ FORTI DELLA SETTIMANA" : "▼  I PIÙ DEBOLI DELLA SETTIMANA", VW / 2, 565, `400 23px ${SANS}`, bull ? G.gold : G.down, 5, "center"); ctx.globalAlpha = 1;
+  const top = 700, rh = 250, x0 = 130, x1 = 950;
+  if (!list.length) { ctx.globalAlpha = a; ctx.textAlign = "center"; ctx.font = `italic 400 46px ${SERIF}`; ctx.fillStyle = G.soft; ctx.fillText("Nessun setup netto", VW / 2, 900); ctx.globalAlpha = 1; return; }
+  list.forEach((it, i) => {
+    const q = easeOut((p - .12 - i * .1) / .25), y = top + i * rh, dx = 60 * (1 - q);
+    ctx.globalAlpha = a * q;
+    if (i) hline(ctx, x0, x1, y - 50, .25);
+    ctx.textBaseline = "alphabetic"; ctx.textAlign = "left";
+    ctx.font = `400 24px ${MONO}`; ctx.fillStyle = G.mute; ctx.fillText(String(i + 1).padStart(2, "0"), x0, y + 22);
+    ctx.font = `500 74px ${SERIF}`; ctx.fillStyle = G.ink; ctx.fillText(`${it.base} / ${it.quote}`, x0 + 64 + dx, y + 76);
+    spaced(ctx, it.bias.toUpperCase(), x0 + 66 + dx, y + 134, `500 23px ${SANS}`, bull ? G.gold : G.down, 6);
+    ctx.textAlign = "right"; ctx.font = `200 112px ${SANS}`; ctx.fillStyle = bull ? goldGrad(ctx, x1 - 200, x1) : G.down;
+    ctx.fillText((it.total > 0 ? "+" : "-") + Math.abs(it.total), x1 - dx, y + 92);
+    ctx.font = `400 25px ${MONO}`; ctx.fillStyle = G.mute; ctx.fillText(`su ${it.max}`, x1 - dx, y + 134);
+  });
+  ctx.globalAlpha = 1;
+}
+function sceneCta(ctx, p) {
+  const a = easeOut(p / .25);
+  ctx.globalAlpha = a;
+  if (prvLogo.complete && prvLogo.naturalWidth) { const s = .92 + .08 * easeOut(p / .5), lw = 280 * s, lh = lw * prvLogo.naturalHeight / prvLogo.naturalWidth; ctx.drawImage(prvLogo, (VW - lw) / 2, 560 - lh / 2 + 60, lw, lh); }
+  ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  ctx.font = `500 80px ${SERIF}`; ctx.fillStyle = G.ink; ctx.fillText("L'analisi completa,", VW / 2, 930);
+  ctx.font = `italic 500 88px ${SERIF}`; ctx.fillStyle = goldGrad(ctx, VW / 2 - 280, VW / 2 + 280); ctx.fillText("gratuita.", VW / 2, 1045);
+  hline(ctx, VW / 2 - 220, VW / 2 + 220, 1100, .6);
+  ctx.globalAlpha = a * easeOut((p - .25) / .3);
+  const bw = 420, bh = 84, bx = (VW - bw) / 2, by = 1170;
+  ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, bh / 2); ctx.strokeStyle = G.gold; ctx.lineWidth = 2.5; ctx.stroke();
+  spaced(ctx, "LINK IN BIO", VW / 2, by + 53, `600 27px ${SANS}`, G.goldHi, 7, "center");
+  spaced(ctx, "BOARD.PRVJOURNAL.COM", VW / 2, 1340, `500 24px ${SANS}`, G.soft, 6, "center");
+  ctx.font = `400 21px ${SANS}`; ctx.fillStyle = G.mute; ctx.textAlign = "center"; ctx.fillText("Contenuto informativo, non è un consiglio finanziario.", VW / 2, 1420);
+  ctx.globalAlpha = 1;
+}
+function drawVideoFrame(ctx, t) {
+  ctx.clearRect(0, 0, VW, VH);
+  vBg(ctx, t); vFrame(ctx, t);
+  const fns = [sceneHook, sceneStrength, (c, p) => sceneSetups(c, p, true), (c, p) => sceneSetups(c, p, false), sceneCta];
+  SCENES.forEach(([s, e], i) => { if (t >= s && t < e + (i === SCENES.length - 1 ? 1 : 0)) fns[i](ctx, (t - s) / (e - s)); });
+  if (D.demo) { ctx.save(); ctx.translate(VW / 2, VH / 2); ctx.rotate(-Math.PI / 8); ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = `800 ${Math.round(VW / 9)}px Sora`; ctx.fillStyle = "rgba(240,86,74,.3)"; ctx.fillText("DATI DIMOSTRATIVI", 0, 0); ctx.restore(); }
+}
+function playVideo() {                 // anteprima in loop
+  cancelAnimationFrame(vRaf);
+  const cv = $("#cv"), ctx = cv.getContext("2d"); cv.width = VW; cv.height = VH; vStart = performance.now();
+  const loop = (now) => { if (fmt !== "video") return; const t = ((now - vStart) / 1000) % VDUR; drawVideoFrame(ctx, t); if (!recording) $("#vstat").textContent = vMsg || `Anteprima · ${t.toFixed(1)} / ${VDUR} s`; vRaf = requestAnimationFrame(loop); };
+  vRaf = requestAnimationFrame(loop);
+}
+function pickMime() {
+  const opts = ["video/mp4;codecs=avc1.42E01E", "video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
+  return opts.find((m) => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || "";
+}
+async function recordVideo() {
+  if (recording) return;
+  const mime = pickMime();
+  if (!mime) { $("#vstat").textContent = "Questo browser non può registrare video: usa Chrome, Edge o Safari aggiornati sul computer."; return; }
+  recording = true; cancelAnimationFrame(vRaf); $("#dl").disabled = true;
+  const cv = $("#cv"), ctx = cv.getContext("2d"); cv.width = VW; cv.height = VH;
+  const stream = cv.captureStream(30), rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 10_000_000 }), chunks = [];
+  rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+  const done = new Promise((r) => (rec.onstop = r));
+  drawVideoFrame(ctx, 0); rec.start(250);
+  const t0 = performance.now();
+  await new Promise((res) => {
+    const step = (now) => { const t = (now - t0) / 1000; drawVideoFrame(ctx, Math.min(t, VDUR)); $("#vstat").textContent = `● Registrazione in corso… ${Math.min(t, VDUR).toFixed(1)} / ${VDUR} s (non cambiare scheda)`; if (t < VDUR + .3) requestAnimationFrame(step); else res(); };
+    requestAnimationFrame(step);
+  });
+  rec.stop(); await done; stream.getTracks().forEach((tr) => tr.stop());
+  const ext = mime.startsWith("video/mp4") ? "mp4" : "webm", blob = new Blob(chunks, { type: mime.split(";")[0] });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `reel-bias-${D.week.iso}.${ext}`; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  vMsg = ext === "mp4" ? `Video scaricato (MP4, ${(blob.size / 1e6).toFixed(1)} MB): pronto per Reels, TikTok e Shorts.` : `Video scaricato in formato WebM (${(blob.size / 1e6).toFixed(1)} MB). Instagram non lo accetta: importalo in CapCut ed esportalo in MP4, oppure usa Chrome aggiornato o Safari.`;
+  $("#vstat").textContent = vMsg; recording = false; $("#dl").disabled = false; playVideo();
+}
+
 function draw() {
+  if (fmt !== "video") { cancelAnimationFrame(vRaf); $("#vstat").textContent = ""; }
+  if (fmt === "video") { $("#sty").hidden = true; $("#thumbs").hidden = true; $("#dl").innerHTML = "Registra e scarica il video <span class=\"arr\">↓</span>"; return playVideo(); }
   const car = fmt === "carousel";
   $("#sty").hidden = car; $("#dl").innerHTML = car ? "Scarica le 5 slide (ZIP) <span class=\"arr\">↓</span>" : "Scarica PNG <span class=\"arr\">↓</span>";
   if (car) return drawCarousel();
@@ -504,7 +658,7 @@ $("#net").onclick = (e) => { const b = e.target.closest("button"); if (!b) retur
 $("#cap").addEventListener("input", () => { const n = net === "x" ? xLen($("#cap").value) : [...$("#cap").value].length; if (net === "x") $("#count").textContent = `${n}/280 caratteri (limite di X)` + (n > 280 ? " — troppo lungo" : ""); });
 $("#sty").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; theme = b.dataset.t; C = THEMES[theme]; document.querySelectorAll("#sty button").forEach((x) => x.classList.toggle("on", x === b)); draw(); };
 $("#fmt").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; fmt = b.dataset.f; document.querySelectorAll("#fmt button").forEach((x) => x.classList.toggle("on", x === b)); draw(); const want = fmt === "x" ? "x" : "ig"; if ((want === "x") !== (net === "x")) document.querySelector(`#net [data-n=${want}]`).click(); };
-$("#dl").onclick = () => fmt === "carousel" ? downloadCarousel() : $("#cv").toBlob((blob) => {
+$("#dl").onclick = () => fmt === "video" ? recordVideo() : fmt === "carousel" ? downloadCarousel() : $("#cv").toBlob((blob) => {
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `bias-settimana-${D.week.iso}-${fmt}-${theme}.png`;
   document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
 }, "image/png");
