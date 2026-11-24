@@ -23,6 +23,11 @@
   .row .btn{flex:1}
   .note{font-size:12.5px;color:var(--mute);line-height:1.5}
   .warn{background:rgba(240,86,74,.12);border:1px solid rgba(240,86,74,.35);color:#ff9d93;border-radius:12px;padding:10px 14px;font-size:13px;margin-bottom:16px}
+  .thumbs{display:flex;gap:10px;margin-top:12px;overflow-x:auto}
+  .thumbs[hidden]{display:none}
+  .thumbs canvas{width:108px;height:135px;border-radius:8px;cursor:pointer;opacity:.55;border:2px solid transparent;flex:none}
+  .thumbs canvas.on{opacity:1;border-color:var(--lime)}
+  #sty[hidden]{display:none}
   @media (max-width:1000px){.gen-grid{grid-template-columns:1fr}}
 </style>
 </head>
@@ -36,7 +41,8 @@
       <button data-t="board">Stile Board</button>
     </div>
     <div class="seg" id="fmt">
-      <button data-f="post" class="on">Post 1080×1350</button>
+      <button data-f="carousel" class="on">Carosello IG (5)</button>
+      <button data-f="post">Post 1080×1350</button>
       <button data-f="story">Storia 1080×1920</button>
       <button data-f="x">X 1600×900</button>
     </div>
@@ -44,7 +50,8 @@
   </div>
   <div id="warn"></div>
   <div class="gen-grid">
-    <div class="preview"><canvas id="cv" width="1080" height="1350" aria-label="Anteprima immagine del bias della settimana"></canvas></div>
+    <div><div class="preview"><canvas id="cv" width="1080" height="1350" aria-label="Anteprima immagine del bias della settimana"></canvas></div>
+    <div class="thumbs" id="thumbs" hidden></div></div>
     <div class="side-panel">
       <div class="card">
         <h2>Immagine</h2>
@@ -78,7 +85,7 @@ const CC2 = { USD: "US", EUR: "EU", GBP: "GB", JPY: "JP", CHF: "CH", CAD: "CA", 
 const MESI = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
 const FMT = { post: [1080, 1350], story: [1080, 1920], x: [1600, 900] };
 const sg = (v) => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v);
-let D = null, fmt = "post";
+let D = null, fmt = "carousel";
 
 /* ---------------------------------------------------------------- dati */
 function weekOf(asOf) {
@@ -234,7 +241,176 @@ function marble(ctx, W, H) {
   ctx.lineCap = "round"; ctx.lineJoin = "round";
   for (let v = 0; v < 6; v++) vein(rnd() * W, rnd() < .5 ? -10 : rnd() * H, .6 + rnd() * 1.2, 120 + rnd() * 160, .8 + rnd() * 1.8, .18 + rnd() * .35, 0);
 }
+
+/* ================================================================ CAROSELLO PRV (Instagram, 5 slide 1080×1350) */
+const marbleImg = new Image(); marbleImg.src = "marmo-1.jpg";
+const G = { gold: "#d6bf86", goldHi: "#f1e3b6", goldLo: "#8a6d33", ink: "#f3ede0", soft: "#b9b09a", mute: "#857d6b", down: "#a8735f", line: "rgba(214,191,134,.35)" };
+const SERIF = '"Playfair Display", Georgia, serif', SANS = 'Inter, system-ui, sans-serif', MONO = '"IBM Plex Mono", monospace';
+let slide = 0;
+const SLIDES = 5;
+
+function goldGrad(ctx, x0, x1) { const g = ctx.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, G.goldHi); g.addColorStop(.5, G.gold); g.addColorStop(1, G.goldLo); return g; }
+function spaced(ctx, s, x, y, font, color, sp, align = "left") {          // testo con spaziatura tra le lettere
+  ctx.font = font; const w = [...s].reduce((a, ch) => a + ctx.measureText(ch).width + sp, -sp);
+  let cx = align === "center" ? x - w / 2 : align === "right" ? x - w : x;
+  ctx.fillStyle = color; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  for (const ch of s) { ctx.fillText(ch, cx, y); cx += ctx.measureText(ch).width + sp; }
+  return w;
+}
+function hline(ctx, x0, x1, y, a = .35) { const g = ctx.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, `rgba(214,191,134,0)`); g.addColorStop(.5, `rgba(214,191,134,${a})`); g.addColorStop(1, `rgba(214,191,134,0)`); ctx.fillStyle = g; ctx.fillRect(x0, y, x1 - x0, 1.5); }
+
+function slideBg(ctx, W, H, dark) {
+  if (marbleImg.complete && marbleImg.naturalWidth) {
+    const r = Math.max(W / marbleImg.naturalWidth, H / marbleImg.naturalHeight), w = marbleImg.naturalWidth * r, h = marbleImg.naturalHeight * r;
+    // ogni slide usa una porzione/orientamento diverso del marmo, così il carosello non sembra ripetuto
+    ctx.save(); ctx.translate(W / 2, H / 2); if (slide % 2) ctx.scale(-1, 1); if (slide === 2 || slide === 3) ctx.scale(1, -1);
+    ctx.drawImage(marbleImg, -w / 2, -h / 2, w, h); ctx.restore();
+  } else { ctx.fillStyle = "#0b0a09"; ctx.fillRect(0, 0, W, H); }
+  ctx.fillStyle = `rgba(6,6,7,${dark})`; ctx.fillRect(0, 0, W, H);
+  const v = ctx.createRadialGradient(W / 2, H / 2, H * .25, W / 2, H / 2, H * .8); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,.55)");
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+}
+function slideFrame(ctx, W, H) {
+  spaced(ctx, "PRV TRADING CLUB", 84, 108, `500 19px ${SANS}`, G.gold, 5);
+  if (prvLogo.complete && prvLogo.naturalWidth) { const lw = 64, lh = lw * prvLogo.naturalHeight / prvLogo.naturalWidth; ctx.drawImage(prvLogo, W - 84 - lw, 82, lw, lh); }
+  spaced(ctx, `${String(slide + 1).padStart(2, "0")} / ${String(SLIDES).padStart(2, "0")}`, 84, H - 84, `500 18px ${SANS}`, G.mute, 4);
+  spaced(ctx, "BOARD.PRVJOURNAL.COM", W - 84, H - 84, `500 18px ${SANS}`, G.mute, 4, "right");
+}
+function title(ctx, W, y, a, b) {   // titolo serif: prima parola normale, seconda in corsivo dorato
+  ctx.textBaseline = "alphabetic"; ctx.textAlign = "left";
+  ctx.font = `500 74px ${SERIF}`; const wa = ctx.measureText(a + " ").width;
+  ctx.font = `italic 500 74px ${SERIF}`; const wb = ctx.measureText(b).width;
+  const x = (W - wa - wb) / 2;
+  ctx.font = `500 74px ${SERIF}`; ctx.fillStyle = G.ink; ctx.fillText(a + " ", x, y);
+  ctx.font = `italic 500 74px ${SERIF}`; ctx.fillStyle = goldGrad(ctx, x + wa, x + wa + wb); ctx.fillText(b, x + wa, y);
+}
+
+function slideCover(ctx, W, H) {
+  slideBg(ctx, W, H, .35);
+  slideFrame(ctx, W, H);
+  spaced(ctx, "IL PUNTO DEL LUNEDÌ", W / 2, 470, `500 22px ${SANS}`, G.gold, 7, "center");
+  ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  ctx.font = `500 128px ${SERIF}`; ctx.fillStyle = G.ink; ctx.fillText("Bias della", W / 2, 620);
+  ctx.font = `italic 500 140px ${SERIF}`; ctx.fillStyle = goldGrad(ctx, W / 2 - 300, W / 2 + 300); ctx.fillText("settimana", W / 2, 770);
+  hline(ctx, W / 2 - 220, W / 2 + 220, 830, .7);
+  spaced(ctx, D.week.label.toUpperCase(), W / 2, 892, `500 26px ${SANS}`, G.ink, 6, "center");
+  spaced(ctx, "MACRO  ·  COT  ·  STAGIONALITÀ", W / 2, 950, `400 20px ${SANS}`, G.soft, 5, "center");
+  spaced(ctx, "SCORRI  →", W / 2, H - 170, `500 20px ${SANS}`, G.gold, 6, "center");
+}
+function slideStrength(ctx, W, H) {
+  slideBg(ctx, W, H, .62);
+  slideFrame(ctx, W, H);
+  title(ctx, W, 280, "Forza delle", "valute");
+  spaced(ctx, "MACRO + COT  ·  SCALA DA −10 A +10", W / 2, 336, `400 19px ${SANS}`, G.soft, 4, "center");
+  const top = 420, rh = 92, x0 = 150, x1 = W - 150, mid = (x0 + 260 + x1 - 120) / 2, half = (x1 - 120 - (x0 + 260)) / 2;
+  D.strength.forEach((r, i) => {
+    const y = top + i * rh;
+    if (i) hline(ctx, x0, x1, y - rh / 2, .16);
+    ctx.textBaseline = "middle"; ctx.textAlign = "left";
+    ctx.font = `400 20px ${MONO}`; ctx.fillStyle = G.mute; ctx.fillText(String(i + 1).padStart(2, "0"), x0, y);
+    ctx.font = `500 44px ${SERIF}`; ctx.fillStyle = G.ink; ctx.fillText(r.c, x0 + 62, y + 2);
+    ctx.fillStyle = "rgba(214,191,134,.28)"; ctx.fillRect(mid - .75, y - 24, 1.5, 48);
+    const w = Math.min(1, Math.abs(r.v) / 10) * half;
+    if (w > 0) {
+      if (r.v > 0) { const g = ctx.createLinearGradient(mid, 0, mid + w, 0); g.addColorStop(0, "rgba(214,191,134,.35)"); g.addColorStop(1, G.goldHi); ctx.fillStyle = g; }
+      else { const g = ctx.createLinearGradient(mid - w, 0, mid, 0); g.addColorStop(0, G.down); g.addColorStop(1, "rgba(168,115,95,.3)"); ctx.fillStyle = g; }
+      ctx.beginPath(); ctx.roundRect(r.v > 0 ? mid : mid - w, y - 4, w, 8, 4); ctx.fill();
+    }
+    ctx.textAlign = "right"; ctx.font = `500 30px ${MONO}`; ctx.fillStyle = r.v > 0 ? G.goldHi : r.v < 0 ? G.down : G.mute;
+    ctx.fillText((r.v > 0 ? "▲ +" : r.v < 0 ? "▼ −" : "") + Math.abs(r.v), x1, y + 1);
+  });
+}
+function slideSetups(ctx, W, H, bull) {
+  slideBg(ctx, W, H, .58);
+  slideFrame(ctx, W, H);
+  title(ctx, W, 280, "Setup", bull ? "rialzisti" : "ribassisti");
+  spaced(ctx, bull ? "▲  I PIÙ FORTI DELLA SETTIMANA" : "▼  I PIÙ DEBOLI DELLA SETTIMANA", W / 2, 336, `400 19px ${SANS}`, bull ? G.gold : G.down, 4, "center");
+  const list = bull ? D.bulls : D.bears, top = 430, rh = 230, x0 = 150, x1 = W - 150;
+  if (!list.length) { ctx.textAlign = "center"; ctx.font = `italic 400 40px ${SERIF}`; ctx.fillStyle = G.soft; ctx.fillText("Nessun setup netto questa settimana", W / 2, 640); return; }
+  list.forEach((it, i) => {
+    const y = top + i * rh;
+    if (i) hline(ctx, x0, x1, y - 40, .25);
+    ctx.textBaseline = "alphabetic"; ctx.textAlign = "left";
+    ctx.font = `400 20px ${MONO}`; ctx.fillStyle = G.mute; ctx.fillText(String(i + 1).padStart(2, "0"), x0, y + 22);
+    ctx.font = `500 64px ${SERIF}`; ctx.fillStyle = G.ink; ctx.fillText(`${it.base} / ${it.quote}`, x0 + 60, y + 70);
+    spaced(ctx, it.bias.toUpperCase(), x0 + 62, y + 122, `500 19px ${SANS}`, bull ? G.gold : G.down, 5);
+    ctx.textAlign = "right";
+    ctx.font = `200 96px ${SANS}`; ctx.fillStyle = bull ? goldGrad(ctx, x1 - 180, x1) : G.down;
+    const num = (it.total > 0 ? "+" : "-") + Math.abs(it.total);   // trattino corto: con il carattere sottile il segno resta vicino al numero
+    ctx.fillText(num, x1, y + 86);
+    ctx.font = `400 22px ${MONO}`; ctx.fillStyle = G.mute; ctx.fillText(`su ${it.max}`, x1, y + 124);
+  });
+}
+function slideCta(ctx, W, H) {
+  slideBg(ctx, W, H, .4);
+  slideFrame(ctx, W, H);
+  if (prvLogo.complete && prvLogo.naturalWidth) { const lw = 230, lh = lw * prvLogo.naturalHeight / prvLogo.naturalWidth; ctx.drawImage(prvLogo, (W - lw) / 2, 360, lw, lh); }
+  ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  ctx.font = `500 70px ${SERIF}`; ctx.fillStyle = G.ink; ctx.fillText("L'analisi completa,", W / 2, 700);
+  ctx.font = `italic 500 76px ${SERIF}`; ctx.fillStyle = goldGrad(ctx, W / 2 - 260, W / 2 + 260); ctx.fillText("gratuita.", W / 2, 800);
+  hline(ctx, W / 2 - 200, W / 2 + 200, 850, .6);
+  spaced(ctx, "VALUTE  ·  INDICI  ·  MATERIE PRIME", W / 2, 912, `400 20px ${SANS}`, G.soft, 4, "center");
+  // pulsante "link in bio"
+  ctx.font = `600 24px ${SANS}`; const lab = "LINK IN BIO", bw = 340, bh = 70, bx = (W - bw) / 2, by = 990;
+  ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, bh / 2); ctx.strokeStyle = G.gold; ctx.lineWidth = 2; ctx.stroke();
+  spaced(ctx, lab, W / 2, by + 44, `600 22px ${SANS}`, G.goldHi, 6, "center");
+  ctx.font = `400 17px ${SANS}`; ctx.fillStyle = G.mute; ctx.textAlign = "center";
+  ctx.fillText("Contenuto informativo, non è un consiglio finanziario.", W / 2, 1155);
+}
+function drawSlide(ctx, W, H, i) {
+  const keep = slide; slide = i;
+  ctx.clearRect(0, 0, W, H);
+  [slideCover, slideStrength, (c, w, h) => slideSetups(c, w, h, true), (c, w, h) => slideSetups(c, w, h, false), slideCta][i](ctx, W, H);
+  if (D.demo) { ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(-Math.PI / 9); ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = `800 ${Math.round(W / 9)}px Sora`; ctx.fillStyle = "rgba(240,86,74,.3)"; ctx.fillText("DATI DIMOSTRATIVI", 0, 0); ctx.restore(); }
+  slide = keep;
+}
+function drawCarousel() {
+  const cv = $("#cv"), ctx = cv.getContext("2d"); cv.width = 1080; cv.height = 1350;
+  drawSlide(ctx, 1080, 1350, slide);
+  const th = $("#thumbs"); th.hidden = false;
+  if (!th.children.length) for (let i = 0; i < SLIDES; i++) { const c = document.createElement("canvas"); c.width = 216; c.height = 270; c.title = `Slide ${i + 1}`; c.onclick = () => { slide = i; draw(); }; th.appendChild(c); }
+  [...th.children].forEach((c, i) => {
+    const big = document.createElement("canvas"); big.width = 1080; big.height = 1350; drawSlide(big.getContext("2d"), 1080, 1350, i);
+    const x = c.getContext("2d"); x.drawImage(big, 0, 0, 216, 270); c.classList.toggle("on", i === slide);
+  });
+}
+
+/* ZIP senza librerie esterne (file salvati senza compressione: i PNG sono già compressi) */
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(b) { let c = 0xffffffff; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
+function makeZip(files) {
+  const enc = new TextEncoder(), parts = [], central = []; let off = 0;
+  const now = new Date(), dosT = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1), dosD = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+  for (const f of files) {
+    const name = enc.encode(f.name), crc = crc32(f.data), sz = f.data.length;
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(10, dosT, true); h.setUint16(12, dosD, true); h.setUint32(14, crc, true); h.setUint32(18, sz, true); h.setUint32(22, sz, true); h.setUint16(26, name.length, true);
+    parts.push(new Uint8Array(h.buffer), name, f.data);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(12, dosT, true); c.setUint16(14, dosD, true); c.setUint32(16, crc, true); c.setUint32(20, sz, true); c.setUint32(24, sz, true); c.setUint16(28, name.length, true); c.setUint32(42, off, true);
+    central.push(new Uint8Array(c.buffer), name);
+    off += 30 + name.length + sz;
+  }
+  const csz = central.reduce((a, b) => a + b.length, 0), e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csz, true); e.setUint32(16, off, true);
+  return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: "application/zip" });
+}
+async function downloadCarousel() {
+  const files = [];
+  for (let i = 0; i < SLIDES; i++) {
+    const c = document.createElement("canvas"); c.width = 1080; c.height = 1350; drawSlide(c.getContext("2d"), 1080, 1350, i);
+    const blob = await new Promise((r) => c.toBlob(r, "image/png"));
+    files.push({ name: `${String(i + 1).padStart(2, "0")}-bias-${D.week.iso}.png`, data: new Uint8Array(await blob.arrayBuffer()) });
+  }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(makeZip(files)); a.download = `carosello-bias-${D.week.iso}.zip`;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
 function draw() {
+  const car = fmt === "carousel";
+  $("#sty").hidden = car; $("#dl").innerHTML = car ? "Scarica le 5 slide (ZIP) <span class=\"arr\">↓</span>" : "Scarica PNG <span class=\"arr\">↓</span>";
+  if (car) return drawCarousel();
+  $("#thumbs").hidden = true;
   const [W, H] = FMT[fmt], cv = $("#cv"), ctx = cv.getContext("2d");
   cv.width = W; cv.height = H;
   ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
@@ -328,7 +504,7 @@ $("#net").onclick = (e) => { const b = e.target.closest("button"); if (!b) retur
 $("#cap").addEventListener("input", () => { const n = net === "x" ? xLen($("#cap").value) : [...$("#cap").value].length; if (net === "x") $("#count").textContent = `${n}/280 caratteri (limite di X)` + (n > 280 ? " — troppo lungo" : ""); });
 $("#sty").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; theme = b.dataset.t; C = THEMES[theme]; document.querySelectorAll("#sty button").forEach((x) => x.classList.toggle("on", x === b)); draw(); };
 $("#fmt").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; fmt = b.dataset.f; document.querySelectorAll("#fmt button").forEach((x) => x.classList.toggle("on", x === b)); draw(); const want = fmt === "x" ? "x" : "ig"; if ((want === "x") !== (net === "x")) document.querySelector(`#net [data-n=${want}]`).click(); };
-$("#dl").onclick = () => $("#cv").toBlob((blob) => {
+$("#dl").onclick = () => fmt === "carousel" ? downloadCarousel() : $("#cv").toBlob((blob) => {
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `bias-settimana-${D.week.iso}-${fmt}-${theme}.png`;
   document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
 }, "image/png");
@@ -340,10 +516,10 @@ $("#copy").onclick = async () => {
 (async () => {
   try {
     D = await loadData();
-    await Promise.all(["600 28px Sora", "700 60px Sora", "800 60px Sora", "500 20px Inter", "600 20px Inter", "700 20px Inter", "500 20px 'IBM Plex Mono'", "600 20px 'IBM Plex Mono'"].map((f) => document.fonts.load(f)));
+    await Promise.all(["600 28px Sora", "700 60px Sora", "800 60px Sora", "500 20px Inter", "600 20px Inter", "700 20px Inter", "500 20px 'IBM Plex Mono'", "600 20px 'IBM Plex Mono'", "400 20px 'IBM Plex Mono'", "500 70px 'Playfair Display'", "italic 500 70px 'Playfair Display'", "400 20px Inter"].map((f) => document.fonts.load(f)));
     $("#sub").textContent = `Dati al ${shortDate(D.asOf)} · settimana ${D.week.label}`;
     if (D.demo) $("#warn").innerHTML = `<div class="warn"><b>Attenzione:</b> il Board sta usando dati dimostrativi. L'immagine riporta la scritta "DATI DIMOSTRATIVI": non pubblicarla finché la pipeline non scarica i dati reali.</div>`;
-    await new Promise((r) => (prvLogo.complete ? r() : (prvLogo.onload = prvLogo.onerror = r)));
+    await Promise.all([prvLogo, marbleImg].map((im) => new Promise((r) => (im.complete ? r() : (im.onload = im.onerror = r)))));
     showCaption();
     draw();
   } catch (e) { $("#sub").textContent = "Impossibile leggere i dati del Board: " + e.message; }
