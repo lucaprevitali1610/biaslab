@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Video educativo — generatore · PRV</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body{background:var(--bg)}
+  .gen{max-width:1280px;margin:0 auto;padding:28px 24px 60px}
+  .gen-h{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+  .gen-h h1{margin:0;font:700 28px var(--head);letter-spacing:-.03em}
+  .gen-h .sub{color:var(--mute);margin-top:4px}
+  .gen-grid{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:22px;align-items:start}
+  .preview{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;display:grid;place-items:center}
+  .preview canvas{height:min(78vh,820px);width:auto;max-width:100%;border-radius:12px;box-shadow:0 20px 50px -20px rgba(0,0,0,.7)}
+  .card h2{margin:0 0 10px;font-size:15px}
+  .fld{display:block;margin-bottom:10px}
+  .fld span{display:flex;justify-content:space-between;font-size:12px;color:var(--mute);margin-bottom:4px}
+  .fld input,.fld textarea,.fld select{width:100%;background:var(--soft);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font:13.5px/1.45 Inter,system-ui,sans-serif}
+  .fld textarea{resize:vertical;min-height:54px}
+  .row{display:flex;gap:8px;flex-wrap:wrap}.row .btn{flex:1}
+  .note{font-size:12.5px;color:var(--mute);line-height:1.5}
+  a.back{color:var(--mute);font-size:13px;text-decoration:underline}
+  @media (max-width:1050px){.gen-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="gen">
+  <div class="gen-h">
+    <div><div class="eyebrow">PRV · strumento interno</div><h1>Video educativo</h1><div class="sub">Gancio, 3 punti, sintesi: video verticale 1080×1920 in stile PRV, pronto per Reels, TikTok e Shorts</div></div>
+    <a class="back" href="bias.html">← Bias della settimana</a>
+  </div>
+  <div class="gen-grid">
+    <div class="preview"><canvas id="cv" width="1080" height="1920" aria-label="Anteprima del video educativo"></canvas></div>
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <h2>Copione</h2>
+        <label class="fld"><span>Copione pronto</span><select id="preset"></select></label>
+        <label class="fld"><span>Tema (in alto su ogni scena)</span><input id="f_topic"></label>
+        <label class="fld"><span>1 · Gancio (primi 2 secondi)</span><textarea id="f_hook"></textarea></label>
+        <label class="fld"><span>2 · Il problema</span><textarea id="f_problem"></textarea></label>
+        <label class="fld"><span>3 · Punto 1</span><textarea id="f_p1"></textarea></label>
+        <label class="fld"><span>4 · Punto 2</span><textarea id="f_p2"></textarea></label>
+        <label class="fld"><span>5 · Punto 3</span><textarea id="f_p3"></textarea></label>
+        <label class="fld"><span>6 · In sintesi</span><textarea id="f_take"></textarea></label>
+        <label class="fld"><span>7 · Chiusura</span><textarea id="f_cta"></textarea></label>
+        <p class="note" id="dur"></p>
+      </div>
+      <div class="card">
+        <div class="row"><button class="btn" id="rec">Registra e scarica il video <span class="arr">↓</span></button></div>
+        <p class="note" id="vstat" style="margin:10px 0 0;color:var(--ink)"></p>
+        <p class="note" style="margin:8px 0 0">Testi brevi rendono meglio: una frase per scena. Registra dal computer con Chrome, Edge o Safari aggiornati (MP4) e non cambiare scheda durante la registrazione.</p>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+"use strict";
+const $ = (s) => document.querySelector(s);
+const VW = 1080, VH = 1920;
+const G = { gold: "#d6bf86", goldHi: "#f1e3b6", goldLo: "#8a6d33", ink: "#f3ede0", soft: "#c9c0aa", mute: "#8f877a" };
+const SERIF = '"Playfair Display", Georgia, serif', SANS = 'Inter, system-ui, sans-serif', MONO = '"IBM Plex Mono", monospace';
+const marble = new Image(); marble.src = "marmo-1.jpg";
+const logo = new Image(); logo.src = "prv-logo.svg";
+const CTA_DEF = "Salvalo per dopo. Lo trovi gratis: link in bio.";
+
+/* ------------------------------------------------------------ copioni pronti */
+const PRESETS = [
+  { name: "Cos'è il COT report", topic: "COT REPORT",
+    hook: "I grandi fondi ti dicono ogni settimana cosa stanno facendo. Quasi nessuno lo legge.",
+    problem: "Il COT report della CFTC mostra come sono posizionati gli speculatori sui futures di valute, indici e materie prime.",
+    p1: "Esce ogni venerdì, con i dati del martedì precedente.",
+    p2: "Conta la posizione netta: contratti long meno contratti short.",
+    p3: "Più del numero conta la direzione: se il netto cresce settimana dopo settimana, il posizionamento si sta rafforzando.",
+    take: "Il COT non dà segnali d'ingresso: ti dice da che parte sta il denaro grosso.",
+    cta: "Salvalo per dopo. Il COT di valute, indici e materie prime, gratis: link in bio." },
+  { name: "Stagionalità: come usarla", topic: "STAGIONALITÀ",
+    hook: "Dicembre è un buon mese per l'oro? La stagionalità risponde, ma va letta bene.",
+    problem: "Molti guardano solo la media e la prendono come una previsione.",
+    p1: "È il comportamento medio di un mercato nello stesso periodo dell'anno, su 5, 10 o 15 anni.",
+    p2: "Guarda quante volte è successo: una media positiva con metà degli anni negativi dice poco.",
+    p3: "Usala come conferma del bias macro e del COT, mai da sola.",
+    take: "La stagionalità è un vento a favore, non il motore.",
+    cta: "Salvalo per dopo. La stagionalità di ogni mercato, gratis: link in bio." },
+  { name: "XIRR: il tuo +40% è vero?", topic: "RENDIMENTO REALE",
+    hook: "Il tuo portafoglio segna +40%? Forse non è il tuo rendimento.",
+    problem: "Se hai versato soldi nel tempo, come in un PAC, la percentuale semplice inganna.",
+    p1: "Il TWR misura le tue scelte: quanto avrebbero reso 100 € investiti all'inizio.",
+    p2: "L'XIRR misura i tuoi soldi: tiene conto di quanto e quando hai versato.",
+    p3: "Per un PAC, l'XIRR è il rendimento annuo reale del capitale che hai messo.",
+    take: "Due numeri, due domande diverse: non confonderli.",
+    cta: "Salvalo per dopo. Il tracker che calcola XIRR e TWR, gratis: link in bio." },
+  { name: "Drawdown: quanto puoi perdere", topic: "DRAWDOWN",
+    hook: "Un +30% non dice niente se prima hai perso il 40%.",
+    problem: "Il drawdown misura la discesa massima dal picco precedente.",
+    p1: "Per recuperare un −50% serve un +100%.",
+    p2: "Il max drawdown ti dice quanto dolore il portafoglio ha già sopportato.",
+    p3: "Confrontalo sempre con il rendimento: +10% con −35% di drawdown è un'altra storia.",
+    take: "Prima di chiederti quanto puoi guadagnare, chiediti quanto puoi perdere.",
+    cta: "Salvalo per dopo. Il tracker che misura il tuo drawdown, gratis: link in bio." },
+  { name: "— Vuoto (scrivi il tuo) —", topic: "", hook: "", problem: "", p1: "", p2: "", p3: "", take: "", cta: CTA_DEF },
+];
+const FIELDS = ["topic", "hook", "problem", "p1", "p2", "p3", "take", "cta"];
+$("#preset").innerHTML = PRESETS.map((p, i) => `<option value="${i}">${p.name}</option>`).join("");
+function loadPreset(i) { const p = PRESETS[i]; FIELDS.forEach((k) => ($("#f_" + k).value = p[k])); build(); }
+$("#preset").onchange = (e) => loadPreset(+e.target.value);
+FIELDS.forEach((k) => $("#f_" + k).addEventListener("input", build));
+
+/* ------------------------------------------------------------ disegno */
+const clamp01 = (x) => Math.max(0, Math.min(1, x));
+const easeOut = (t) => 1 - Math.pow(1 - clamp01(t), 3);
+const easeInOut = (t) => { t = clamp01(t); return t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; };
+function goldGrad(ctx, x0, x1) { const g = ctx.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, G.goldHi); g.addColorStop(.5, G.gold); g.addColorStop(1, G.goldLo); return g; }
+function spaced(ctx, s, x, y, font, color, sp, align = "left") {
+  ctx.font = font; const w = [...s].reduce((a, ch) => a + ctx.measureText(ch).width + sp, -sp);
+  let cx = align === "center" ? x - w / 2 : x; ctx.fillStyle = color; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  for (const ch of s) { ctx.fillText(ch, cx, y); cx += ctx.measureText(ch).width + sp; } return w;
+}
+function hline(ctx, x0, x1, y, a) { const g = ctx.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, "rgba(214,191,134,0)"); g.addColorStop(.5, `rgba(214,191,134,${a})`); g.addColorStop(1, "rgba(214,191,134,0)"); ctx.fillStyle = g; ctx.fillRect(x0, y, x1 - x0, 1.5); }
+function wrap(ctx, text, font, maxW) {
+  ctx.font = font; const out = []; let line = "";
+  for (const w of String(text).trim().split(/\s+/)) { const t = line ? line + " " + w : w; if (ctx.measureText(t).width > maxW && line) { out.push(line); line = w; } else line = t; }
+  if (line) out.push(line); return out;
+}
+// testo a righe, centrato, con entrata riga per riga; rimpicciolisce il carattere se il testo è lungo
+function block(ctx, text, opts, p) {
+  let size = opts.size, lines;
+  for (;;) { lines = wrap(ctx, text, `${opts.weight || 500} ${opts.italic ? "italic " : ""}${size}px ${opts.family}`.replace(/^(\d+) italic/, "italic $1"), opts.maxW); if (lines.length <= opts.maxLines || size <= opts.min) break; size -= 4; }
+  const lh = size * (opts.lh || 1.22), top = opts.cy - (lines.length - 1) * lh / 2;
+  lines.forEach((l, i) => {
+    const q = easeOut((p - (opts.delay || .05) - i * .06) / .22);
+    ctx.globalAlpha = (opts.alpha ?? 1) * q; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.font = `${opts.italic ? "italic " : ""}${opts.weight || 500} ${size}px ${opts.family}`;
+    ctx.fillStyle = opts.gold ? goldGrad(ctx, VW / 2 - opts.maxW / 2, VW / 2 + opts.maxW / 2) : opts.color;
+    ctx.fillText(l, VW / 2, top + i * lh + 18 * (1 - q));
+  });
+  ctx.globalAlpha = 1;
+  return { top, bottom: top + (lines.length - 1) * lh, size };
+}
+function bg(ctx, t, T) {
+  const z = 1.06 + t / T * .1;
+  if (marble.complete && marble.naturalWidth) { const r = Math.max(VW / marble.naturalWidth, VH / marble.naturalHeight) * z, w = marble.naturalWidth * r, h = marble.naturalHeight * r; ctx.drawImage(marble, (VW - w) / 2 - t * 4, (VH - h) / 2 - t * 7, w, h); }
+  else { ctx.fillStyle = "#0b0a09"; ctx.fillRect(0, 0, VW, VH); }
+  ctx.fillStyle = "rgba(6,6,7,.62)"; ctx.fillRect(0, 0, VW, VH);
+  const v = ctx.createRadialGradient(VW / 2, VH * .45, VH * .2, VW / 2, VH * .45, VH * .75); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,.6)"); ctx.fillStyle = v; ctx.fillRect(0, 0, VW, VH);
+}
+function frame(ctx, t, T, topic) {
+  spaced(ctx, "PRV TRADING CLUB", VW / 2, 150, `500 24px ${SANS}`, G.gold, 7, "center");
+  ctx.fillStyle = "rgba(214,191,134,.18)"; ctx.fillRect(96, 180, 834, 2); ctx.fillStyle = G.gold; ctx.fillRect(96, 180, 834 * clamp01(t / T), 2);
+  if (topic) spaced(ctx, topic.toUpperCase(), VW / 2, 240, `500 22px ${SANS}`, G.soft, 6, "center");
+}
+const fadeOf = (p) => easeOut(p / .12) * (1 - easeInOut((p - .9) / .1));
+
+let S = { scenes: [], T: 0 };
+function sceneDur(text, base) { const words = String(text || "").trim().split(/\s+/).filter(Boolean).length; return Math.min(7, Math.max(base, 1.2 + words * .3)); }
+function build() {
+  const v = Object.fromEntries(FIELDS.map((k) => [k, $("#f_" + k).value.trim()]));
+  const sc = [];
+  if (v.hook) sc.push({ k: "hook", text: v.hook, d: sceneDur(v.hook, 2.6) });
+  if (v.problem) sc.push({ k: "problem", text: v.problem, d: sceneDur(v.problem, 3) });
+  [v.p1, v.p2, v.p3].forEach((t, i) => t && sc.push({ k: "point", n: i + 1, text: t, d: sceneDur(t, 3) }));
+  if (v.take) sc.push({ k: "take", text: v.take, d: sceneDur(v.take, 3) });
+  sc.push({ k: "cta", text: v.cta || CTA_DEF, d: 3.2 });
+  let t = 0; sc.forEach((s) => { s.s = t; t += s.d; s.e = t; });
+  S = { scenes: sc, T: t, topic: v.topic };
+  $("#dur").textContent = `Durata: ${t.toFixed(1)} secondi · ${sc.length} scene${t > 45 ? " — un po' lungo: sotto i 40 s rende meglio" : ""}`;
+}
+function drawScene(ctx, s, p) {
+  const a = fadeOf(p);
+  if (s.k === "hook") {
+    block(ctx, s.text, { family: SERIF, size: 92, min: 60, maxW: 860, maxLines: 5, cy: 880, color: G.ink, alpha: a }, p);
+  } else if (s.k === "problem") {
+    ctx.globalAlpha = a; spaced(ctx, "IL PROBLEMA", VW / 2, 640, `500 26px ${SANS}`, G.gold, 8, "center"); ctx.globalAlpha = 1;
+    block(ctx, s.text, { family: SANS, weight: 400, size: 54, min: 38, maxW: 840, maxLines: 6, cy: 900, color: G.ink, alpha: a, lh: 1.35 }, p);
+  } else if (s.k === "point") {
+    ctx.globalAlpha = a; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+    ctx.font = `italic 500 170px ${SERIF}`; ctx.fillStyle = goldGrad(ctx, VW / 2 - 120, VW / 2 + 120); ctx.fillText(String(s.n).padStart(2, "0"), VW / 2, 700);
+    hline(ctx, VW / 2 - 160, VW / 2 + 160, 750, .6); ctx.globalAlpha = 1;
+    block(ctx, s.text, { family: SERIF, size: 70, min: 46, maxW: 840, maxLines: 6, cy: 1000, color: G.ink, alpha: a, delay: .1 }, p);
+  } else if (s.k === "take") {
+    ctx.globalAlpha = a; spaced(ctx, "IN SINTESI", VW / 2, 640, `500 26px ${SANS}`, G.gold, 8, "center"); ctx.globalAlpha = 1;
+    block(ctx, s.text, { family: SERIF, italic: true, size: 86, min: 56, maxW: 860, maxLines: 5, cy: 900, gold: true, alpha: a }, p);
+  } else {
+    const q = easeOut(p / .25);
+    ctx.globalAlpha = q;
+    if (logo.complete && logo.naturalWidth) { const lw = 220, lh = lw * logo.naturalHeight / logo.naturalWidth; ctx.drawImage(logo, (VW - lw) / 2, 560, lw, lh); }
+    ctx.globalAlpha = 1;
+    const r = block(ctx, s.text, { family: SERIF, size: 66, min: 44, maxW: 820, maxLines: 4, cy: 1000, color: G.ink, alpha: 1, delay: .1 }, p);
+    ctx.globalAlpha = easeOut((p - .3) / .3);
+    const by = Math.max(1150, r.bottom + 90), bw = 420, bh = 84;
+    ctx.beginPath(); ctx.roundRect((VW - bw) / 2, by, bw, bh, bh / 2); ctx.strokeStyle = G.gold; ctx.lineWidth = 2.5; ctx.stroke();
+    spaced(ctx, "LINK IN BIO", VW / 2, by + 53, `600 27px ${SANS}`, G.goldHi, 7, "center");
+    ctx.font = `400 21px ${SANS}`; ctx.fillStyle = G.mute; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+    ctx.fillText("Contenuto informativo, non è un consiglio finanziario.", VW / 2, by + 170);
+    ctx.globalAlpha = 1;
+  }
+}
+function drawFrame(ctx, t) {
+  ctx.clearRect(0, 0, VW, VH); bg(ctx, t, S.T); frame(ctx, t, S.T, S.topic);
+  const s = S.scenes.find((x) => t >= x.s && t < x.e) || S.scenes[S.scenes.length - 1];
+  if (s) drawScene(ctx, s, s === S.scenes[S.scenes.length - 1] ? Math.min(.89, (t - s.s) / s.d) : (t - s.s) / s.d);
+}
+
+/* ------------------------------------------------------------ anteprima e registrazione */
+let raf = 0, t0 = 0, recording = false, msg = "";
+function play() {
+  cancelAnimationFrame(raf); const ctx = $("#cv").getContext("2d"); t0 = performance.now();
+  const loop = (now) => { if (recording) return; const t = ((now - t0) / 1000) % (S.T + .8); drawFrame(ctx, Math.min(t, S.T - .01)); $("#vstat").textContent = msg || `Anteprima · ${Math.min(t, S.T).toFixed(1)} / ${S.T.toFixed(1)} s`; raf = requestAnimationFrame(loop); };
+  raf = requestAnimationFrame(loop);
+}
+function pickMime() { return ["video/mp4;codecs=avc1.42E01E", "video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm"].find((m) => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || ""; }
+$("#rec").onclick = async () => {
+  if (recording) return;
+  const mime = pickMime(); if (!mime) { $("#vstat").textContent = "Questo browser non può registrare video: usa Chrome, Edge o Safari aggiornati sul computer."; return; }
+  recording = true; msg = ""; cancelAnimationFrame(raf); $("#rec").disabled = true;
+  const cv = $("#cv"), ctx = cv.getContext("2d"), T = S.T;
+  const stream = cv.captureStream(30), rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 10_000_000 }), chunks = [];
+  rec.ondataavailable = (e) => e.data.size && chunks.push(e.data); const done = new Promise((r) => (rec.onstop = r));
+  drawFrame(ctx, 0); rec.start(250); const st = performance.now();
+  await new Promise((res) => { const step = (now) => { const t = (now - st) / 1000; drawFrame(ctx, Math.min(t, T - .01)); $("#vstat").textContent = `● Registrazione… ${Math.min(t, T).toFixed(1)} / ${T.toFixed(1)} s (non cambiare scheda)`; if (t < T + .3) requestAnimationFrame(step); else res(); }; requestAnimationFrame(step); });
+  rec.stop(); await done; stream.getTracks().forEach((x) => x.stop());
+  const ext = mime.startsWith("video/mp4") ? "mp4" : "webm", blob = new Blob(chunks, { type: mime.split(";")[0] });
+  const slug = (S.topic || "video").toLowerCase().normalize("NFD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `edu-${slug}.${ext}`; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  msg = ext === "mp4" ? `Video scaricato (MP4, ${(blob.size / 1e6).toFixed(1)} MB, ${T.toFixed(0)} s): pronto per Reels, TikTok e Shorts.` : `Video scaricato in WebM: Instagram non lo accetta, convertilo in MP4 con CapCut oppure usa Chrome aggiornato o Safari.`;
+  recording = false; $("#rec").disabled = false; play();
+};
+(async () => {
+  await Promise.all(["500 60px 'Playfair Display'", "italic 500 60px 'Playfair Display'", "400 30px Inter", "500 30px Inter", "600 30px Inter"].map((f) => document.fonts.load(f)));
+  await Promise.all([marble, logo].map((im) => new Promise((r) => (im.complete ? r() : (im.onload = im.onerror = r)))));
+  loadPreset(0); play();
+})();
+</script>
+</body>
+</html>
