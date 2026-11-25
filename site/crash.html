@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Video "La caduta" — generatore · PRV</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body{background:var(--bg)}
+  .gen{max-width:1200px;margin:0 auto;padding:28px 24px 60px}
+  .gen-h{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+  .gen-h h1{margin:0;font:700 28px var(--head);letter-spacing:-.03em}
+  .gen-h .sub{color:var(--mute);margin-top:4px}
+  .gen-grid{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:22px;align-items:start}
+  .preview{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;display:grid;place-items:center}
+  .preview canvas{height:min(78vh,820px);width:auto;max-width:100%;border-radius:12px}
+  .card h2{margin:0 0 10px;font-size:15px}
+  .fld{display:block;margin-bottom:10px}
+  .fld span{display:block;font-size:12px;color:var(--mute);margin-bottom:4px}
+  .fld input{width:100%;background:var(--soft);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font:13.5px Inter,system-ui,sans-serif}
+  .row{display:flex;gap:8px}.row .btn{flex:1}
+  .note{font-size:12.5px;color:var(--mute);line-height:1.5}
+  a.back{color:var(--mute);font-size:13px;text-decoration:underline}
+  @media (max-width:1000px){.gen-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="gen">
+  <div class="gen-h">
+    <div><div class="eyebrow">PRV · strumento interno</div><h1>Video "La caduta"</h1><div class="sub">Candele d'oro che salgono, crollano e si ricompongono nel logo · 1080×1920, 12 secondi</div></div>
+    <a class="back" href="bias.html">← Bias della settimana</a>
+  </div>
+  <div class="gen-grid">
+    <div class="preview"><canvas id="cv" width="1080" height="1920" aria-label="Anteprima del video"></canvas></div>
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <h2>Testi (facoltativi)</h2>
+        <label class="fld"><span>Frase iniziale (lascia vuoto per nessuna)</span><input id="t1" value=""></label>
+        <label class="fld"><span>Frase finale, sotto il logo</span><input id="t2" value="Il mercato non avvisa."></label>
+        <label class="fld"><span>Variante (cambia la forma delle candele)</span><input id="seed" type="number" value="7" min="1"></label>
+      </div>
+      <div class="card">
+        <div class="row"><button class="btn" id="rec">Registra e scarica il video <span class="arr">↓</span></button></div>
+        <p class="note" id="vstat" style="margin:10px 0 0;color:var(--ink)"></p>
+        <p class="note" style="margin:8px 0 0"><b>Audio:</b> aggiungilo dalla libreria di TikTok o Instagram. L'<b>impatto</b> della candela gigante è a <b>5,5 secondi</b>: sposta l'inizio della traccia perché il "drop" cada lì.</p>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+"use strict";
+const $ = (s) => document.querySelector(s);
+const VW = 1080, VH = 1920, T = 12;
+const T_TOP = 4.2, T_HIT = 5.5, T_GATHER = 7.3, T_LOGO = 9.6;
+const GOLD_HI = "#ecdcae", GOLD = "#c2b07e", GOLD_LO = "#775e29", BRONZE = "#5d4520";
+const SERIF = '"Playfair Display", Georgia, serif', SANS = "Inter, system-ui, sans-serif";
+const logo = new Image(); logo.src = "prv-logo.svg";
+const clamp01 = (x) => Math.max(0, Math.min(1, x));
+const easeOut = (t) => 1 - Math.pow(1 - clamp01(t), 3);
+const easeInOut = (t) => { t = clamp01(t); return t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; };
+function rng(seed) { let s = seed >>> 0 || 1; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
+
+let C = [], P = [], HIT = null;
+function build() {
+  const r = rng(+$("#seed").value || 7), N = 30;
+  // candele: andamento rialzista con piccole correzioni
+  let price = 0; const raw = [];
+  for (let i = 0; i < N; i++) { const o = price, c = o + (r() < .8 ? r() * 1.3 + .45 : -(r() * .7 + .1)); raw.push({ o, c, h: Math.max(o, c) + r() * .5, l: Math.min(o, c) - r() * .5 }); price = c; }
+  const lo = Math.min(...raw.map((k) => k.l)), hi = Math.max(...raw.map((k) => k.h));
+  const L = 120, R = 860, TOP = 560, BOT = 1300, step = (R - L) / N, bw = step * .58, Y = (v) => BOT - (v - lo) / (hi - lo) * (BOT - TOP);
+  C = raw.map((k, i) => {
+    const x = L + step * (i + .5);
+    return { x, yo: Y(k.o), yc: Y(k.c), yh: Y(k.h), yl: Y(k.l), up: k.c >= k.o, bw, appear: .25 + (i / N) * (T_TOP - .6),
+      // caduta: parte dal punto d'impatto (destra) verso sinistra
+      fall: T_HIT + .08 + (N - 1 - i) * .045 + r() * .08, vx: (r() - .5) * 260 - 120, vy: -(180 + r() * 420), w: (r() - .5) * 5 };
+  });
+  const last = C[C.length - 1];
+  HIT = { x: last.x + step * 1.6, top: last.yc - 40, bw: Math.max(64, bw * 3) };
+  // particelle d'oro: esplodono all'impatto e poi formano il logo
+  const pts = logoPoints();
+  const n = 3200; P = [];
+  for (let i = 0; i < n; i++) {
+    const src = C[(r() * C.length) | 0], a = r() * Math.PI * 2, sp = 250 + r() * 1100;
+    P.push({ x0: r() < .45 ? HIT.x : src.x + (r() - .5) * 20, y0: r() < .45 ? HIT.top + r() * 700 : (src.yo + src.yc) / 2,
+      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 650, k: 2.4 + r() * 1.8, size: 1.3 + r() * 2.8, tw: r(),
+      tx: pts.length ? pts[i % pts.length][0] : VW / 2, ty: pts.length ? pts[i % pts.length][1] : VH / 2, d: r() * .5 });
+  }
+}
+function logoPoints() {
+  if (!(logo.complete && logo.naturalWidth)) return [];
+  const lw = 520, lh = Math.round(lw * logo.naturalHeight / logo.naturalWidth), oc = document.createElement("canvas"); oc.width = lw; oc.height = lh;
+  const o = oc.getContext("2d"); o.drawImage(logo, 0, 0, lw, lh); const d = o.getImageData(0, 0, lw, lh).data, out = [];
+  const x0 = (VW - lw) / 2, y0 = 760 - lh / 2;
+  for (let y = 0; y < lh; y += 3) for (let x = 0; x < lw; x += 3) if (d[(y * lw + x) * 4 + 3] > 150) out.push([x0 + x, y0 + y]);
+  for (let i = out.length - 1; i > 0; i--) { const j = (Math.sin(i * 12.9898) * 43758.5453 % 1 + 1) % 1 * (i + 1) | 0; [out[i], out[j]] = [out[j], out[i]]; }
+  return out;
+}
+
+/* posizione di una particella al tempo t (calcolata, non simulata: il video è identico a ogni registrazione) */
+function particle(p, t) {
+  const g = 420, ball = (s) => { const e = 1 - Math.exp(-p.k * s); return [p.x0 + p.vx * e / p.k, p.y0 + p.vy * e / p.k + g * (s - e / p.k) / p.k]; };
+  if (t < T_GATHER + p.d) return ball(t - T_HIT);
+  const [bx, by] = ball(T_GATHER + p.d - T_HIT), q = easeInOut((t - T_GATHER - p.d) / (T_LOGO - T_GATHER - .2));
+  const swirl = Math.sin(q * Math.PI) * 120 * (p.tw - .5);
+  return [bx + (p.tx - bx) * q + swirl, by + (p.ty - by) * q];
+}
+function goldGrad(ctx, x0, x1) { const g = ctx.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, GOLD_HI); g.addColorStop(.5, GOLD); g.addColorStop(1, GOLD_LO); return g; }
+function candle(ctx, k, alpha, scaleY) {
+  const top = Math.min(k.yo, k.yc), h = Math.max(4, Math.abs(k.yc - k.yo)), mid = (top + h / 2);
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = k.up ? GOLD : BRONZE; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(k.x, mid - (mid - k.yh) * scaleY); ctx.lineTo(k.x, mid + (k.yl - mid) * scaleY); ctx.stroke();
+  const g = ctx.createLinearGradient(0, top, 0, top + h); if (k.up) { g.addColorStop(0, GOLD_HI); g.addColorStop(1, GOLD_LO); } else { g.addColorStop(0, "#7a5c2a"); g.addColorStop(1, "#3a2a12"); }
+  ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(k.x - k.bw / 2, mid - h / 2 * scaleY, k.bw, Math.max(2, h * scaleY), 3); ctx.fill();
+  ctx.globalAlpha = 1;
+}
+function draw(ctx, t) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#070706"; ctx.fillRect(0, 0, VW, VH);
+  // bagliore di fondo
+  const glow = t < T_HIT ? easeOut(t / T_TOP) * .16 : t < T_GATHER ? .26 * Math.exp(-(t - T_HIT) * 1.2) : .16 * easeOut((t - T_GATHER) / 2);
+  const gr = ctx.createRadialGradient(VW / 2, 820, 0, VW / 2, 820, 900); gr.addColorStop(0, `rgba(194,176,126,${glow})`); gr.addColorStop(1, "rgba(194,176,126,0)"); ctx.fillStyle = gr; ctx.fillRect(0, 0, VW, VH);
+  // camera: lento avvicinamento, poi scossa all'impatto
+  let zoom = 1 + .07 * easeInOut(t / T_HIT), sx = 0, sy = 0;
+  if (t > T_HIT && t < T_HIT + 1.4) { const k = 26 * Math.exp(-(t - T_HIT) * 3.2); sx = Math.sin(t * 91) * k; sy = Math.cos(t * 77) * k; zoom += .05 * Math.exp(-(t - T_HIT) * 4); }
+  ctx.setTransform(zoom, 0, 0, zoom, VW / 2 * (1 - zoom) + sx, 900 * (1 - zoom) + sy);
+  // griglia sottile
+  ctx.globalAlpha = .5 * (1 - clamp01((t - T_HIT) / .6)); ctx.strokeStyle = "rgba(194,176,126,.07)"; ctx.lineWidth = 2;
+  for (let i = 0; i < 6; i++) { const y = 560 + i * 148; ctx.beginPath(); ctx.moveTo(90, y); ctx.lineTo(990, y); ctx.stroke(); } ctx.globalAlpha = 1;
+  // candele: comparsa, poi caduta
+  C.forEach((k) => {
+    if (t < k.appear) return;
+    if (t < k.fall) { candle(ctx, k, easeOut((t - k.appear) / .18), easeOut((t - k.appear) / .25)); return; }
+    const s = t - k.fall, x = k.vx * s, y = k.vy * s + .5 * 1700 * s * s; if (y > 2200) return;
+    const cx = k.x, cy = (k.yo + k.yc) / 2;
+    ctx.save(); ctx.translate(cx + x, cy + y); ctx.rotate(k.w * s); ctx.translate(-cx, -cy); candle(ctx, k, 1 - clamp01(s / 1.6) * .3, 1); ctx.restore();
+  });
+  // candela ribassista gigante
+  if (t > T_TOP + .3) {
+    const grow = easeOut((t - T_TOP - .3) / (T_HIT - T_TOP - .3)), bottom = HIT.top + grow * (VH - HIT.top + 200);
+    const s = t - T_HIT, off = s > 0 ? .5 * 2600 * Math.max(0, s - .35) ** 2 : 0, alpha = t < T_HIT + 1.3 ? 1 : 0;
+    if (alpha) {
+      ctx.save(); ctx.translate(0, off);
+      const g = ctx.createLinearGradient(0, HIT.top, 0, bottom); g.addColorStop(0, "#8a6a32"); g.addColorStop(.4, "#4a3416"); g.addColorStop(1, "#1a1208");
+      ctx.fillStyle = g; ctx.shadowColor = "rgba(236,220,174,.5)"; ctx.shadowBlur = 40; ctx.beginPath(); ctx.roundRect(HIT.x - HIT.bw / 2, HIT.top, HIT.bw, bottom - HIT.top, 4); ctx.fill(); ctx.shadowBlur = 0;
+      ctx.strokeStyle = GOLD_HI; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
+    }
+  }
+  // tensione sul massimo: pulsazione
+  if (t > T_TOP - .2 && t < T_HIT) { const last = C[C.length - 1], a = .5 + .5 * Math.sin((t - T_TOP) * 14); ctx.beginPath(); ctx.arc(last.x, last.yc, 16 + a * 22, 0, Math.PI * 2); ctx.strokeStyle = `rgba(236,220,174,${.6 * (1 - a * .5)})`; ctx.lineWidth = 3; ctx.stroke(); }
+  // onda d'urto
+  if (t > T_HIT && t < T_HIT + 1) { const s = (t - T_HIT) / 1; ctx.beginPath(); ctx.arc(HIT.x, HIT.top + 120, 40 + easeOut(s) * 900, 0, Math.PI * 2); ctx.strokeStyle = `rgba(236,220,174,${.7 * (1 - s)})`; ctx.lineWidth = 6 * (1 - s) + 1; ctx.stroke(); }
+  // particelle d'oro
+  if (t > T_HIT) {
+    const gg = goldGrad(ctx, VW / 2 - 300, VW / 2 + 300);
+    ctx.fillStyle = gg;
+    P.forEach((p) => {
+      const [x, y] = particle(p, t); if (y > VH + 40 || x < -40 || x > VW + 40) return;
+      const settle = clamp01((t - T_LOGO + .3) / .8), tw = .55 + .45 * Math.sin(t * 6 + p.tw * 20), s = p.size * (1 - settle * .3);
+      ctx.globalAlpha = Math.min(1, (t - T_HIT) * 6) * (settle ? 1 : tw); ctx.fillRect(x - s / 2, y - s / 2, s, s);
+    });
+    ctx.globalAlpha = 1;
+  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  // lampo all'impatto
+  if (t > T_HIT && t < T_HIT + .45) { ctx.fillStyle = `rgba(236,205,140,${.32 * (1 - (t - T_HIT) / .45)})`; ctx.fillRect(0, 0, VW, VH); }
+  // logo nitido e testi
+  if (t > T_LOGO - .2 && logo.complete && logo.naturalWidth) {
+    const a = easeOut((t - T_LOGO + .2) / .7), lw = 520, lh = lw * logo.naturalHeight / logo.naturalWidth;
+    ctx.globalAlpha = a; ctx.shadowColor = "rgba(236,220,174,.35)"; ctx.shadowBlur = 50; ctx.drawImage(logo, (VW - lw) / 2, 760 - lh / 2, lw, lh); ctx.shadowBlur = 0;
+    const f = $("#t2").value.trim(); if (f) { ctx.globalAlpha = easeOut((t - T_LOGO - .2) / .6); ctx.font = `italic 500 64px ${SERIF}`; ctx.fillStyle = goldGrad(ctx, VW / 2 - 320, VW / 2 + 320); ctx.textAlign = "center"; ctx.textBaseline = "alphabetic"; ctx.fillText(f, VW / 2, 1110); }
+    ctx.globalAlpha = 1;
+  }
+  const t1 = $("#t1").value.trim();
+  if (t1 && t < T_HIT) { ctx.globalAlpha = easeOut(t / .5) * (1 - clamp01((t - T_HIT + .4) / .4)); ctx.font = `600 58px ${SANS}`; ctx.fillStyle = "#f3ede0"; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic"; ctx.fillText(t1, VW / 2, 400); ctx.globalAlpha = 1; }
+  // vignetta
+  const v = ctx.createRadialGradient(VW / 2, VH / 2, VH * .3, VW / 2, VH / 2, VH * .78); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,.6)"); ctx.fillStyle = v; ctx.fillRect(0, 0, VW, VH);
+}
+
+let raf = 0, recording = false, msg = "";
+function play() { cancelAnimationFrame(raf); const ctx = $("#cv").getContext("2d"), t0 = performance.now();
+  const loop = (now) => { if (recording) return; const t = ((now - t0) / 1000) % (T + 1); draw(ctx, Math.min(t, T)); $("#vstat").textContent = msg || `Anteprima · ${Math.min(t, T).toFixed(1)} / ${T} s`; raf = requestAnimationFrame(loop); };
+  raf = requestAnimationFrame(loop); }
+function pickMime() { return ["video/mp4;codecs=avc1.42E01E", "video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm"].find((m) => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || ""; }
+$("#rec").onclick = async () => {
+  if (recording) return; const mime = pickMime(); if (!mime) { $("#vstat").textContent = "Questo browser non può registrare video: usa Chrome, Edge o Safari aggiornati."; return; }
+  recording = true; msg = ""; cancelAnimationFrame(raf); $("#rec").disabled = true;
+  const cv = $("#cv"), ctx = cv.getContext("2d"), stream = cv.captureStream(30), rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 14_000_000 }), chunks = [];
+  rec.ondataavailable = (e) => e.data.size && chunks.push(e.data); const done = new Promise((r) => (rec.onstop = r));
+  draw(ctx, 0); rec.start(250); const st = performance.now();
+  await new Promise((res) => { const step = (now) => { const t = (now - st) / 1000; draw(ctx, Math.min(t, T)); $("#vstat").textContent = `● Registrazione… ${Math.min(t, T).toFixed(1)} / ${T} s (non cambiare scheda)`; if (t < T + .3) requestAnimationFrame(step); else res(); }; requestAnimationFrame(step); });
+  rec.stop(); await done; stream.getTracks().forEach((x) => x.stop());
+  const ext = mime.startsWith("video/mp4") ? "mp4" : "webm", blob = new Blob(chunks, { type: mime.split(";")[0] });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `la-caduta.${ext}`; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  msg = ext === "mp4" ? `Video scaricato (MP4, ${(blob.size / 1e6).toFixed(1)} MB). Aggiungi l'audio dall'app: impatto a 5,5 s.` : "Video scaricato in WebM: convertilo in MP4 con CapCut oppure usa Chrome aggiornato o Safari.";
+  recording = false; $("#rec").disabled = false; play();
+};
+$("#seed").addEventListener("input", build);
+(async () => { await Promise.all(["italic 500 60px 'Playfair Display'", "600 60px Inter"].map((f) => document.fonts.load(f))); await new Promise((r) => (logo.complete ? r() : (logo.onload = logo.onerror = r))); build(); play(); })();
+</script>
+</body>
+</html>
