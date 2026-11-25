@@ -2,5 +2,6 @@ User-agent: *
 Allow: /
 Disallow: /bias.html
 Disallow: /edu.html
+Disallow: /meme.html
 
 Sitemap: https://board.prvjournal.com/sitemap.xml

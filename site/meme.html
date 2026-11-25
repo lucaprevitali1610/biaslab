@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Video meme "compri al massimo" — generatore · PRV</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body{background:var(--bg)}
+  .gen{max-width:1200px;margin:0 auto;padding:28px 24px 60px}
+  .gen-h{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+  .gen-h h1{margin:0;font:700 28px var(--head);letter-spacing:-.03em}
+  .gen-h .sub{color:var(--mute);margin-top:4px}
+  .gen-grid{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:22px;align-items:start}
+  .preview{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;display:grid;place-items:center}
+  .preview canvas{height:min(78vh,820px);width:auto;max-width:100%;border-radius:12px}
+  .card h2{margin:0 0 10px;font-size:15px}
+  .fld{display:block;margin-bottom:10px}
+  .fld span{display:block;font-size:12px;color:var(--mute);margin-bottom:4px}
+  .fld input{width:100%;background:var(--soft);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font:13.5px Inter,system-ui,sans-serif}
+  .row{display:flex;gap:8px}.row .btn{flex:1}
+  .note{font-size:12.5px;color:var(--mute);line-height:1.5}
+  a.back{color:var(--mute);font-size:13px;text-decoration:underline}
+  @media (max-width:1000px){.gen-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="gen">
+  <div class="gen-h">
+    <div><div class="eyebrow">PRV · strumento interno</div><h1>Video meme: "compri al massimo"</h1><div class="sub">Il crollo reale di Bitcoin, nov 2021 → nov 2022 · video verticale 1080×1920, circa 10 secondi</div></div>
+    <a class="back" href="bias.html">← Bias della settimana</a>
+  </div>
+  <div class="gen-grid">
+    <div class="preview"><canvas id="cv" width="1080" height="1920" aria-label="Anteprima del video"></canvas></div>
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <h2>Testi</h2>
+        <label class="fld"><span>Frase in alto (il gancio)</span><input id="t1" value="POV: compri Bitcoin al massimo"></label>
+        <label class="fld"><span>Al momento dell'acquisto</span><input id="t2" value="Questa volta è diverso 🚀"></label>
+        <label class="fld"><span>Durante il crollo</span><input id="t3" value="…"></label>
+        <label class="fld"><span>Frase finale</span><input id="t4" value="Il drawdown è il numero che nessuno guarda."></label>
+        <label class="fld"><span>Chiusura</span><input id="t5" value="Impara a misurarlo: PRV Academy, link in bio"></label>
+      </div>
+      <div class="card">
+        <div class="row"><button class="btn" id="rec">Registra e scarica il video <span class="arr">↓</span></button></div>
+        <p class="note" id="vstat" style="margin:10px 0 0;color:var(--ink)"></p>
+        <p class="note" style="margin:8px 0 0"><b>Audio:</b> il video esce senza suono. Aggiungi l'audio di tendenza dalla libreria di TikTok o Instagram quando pubblichi: è il modo corretto (diritti) e quello che fa entrare il video nel trend. Il crollo arriva a circa 3,5 s: sincronizzalo con il "drop" dell'audio spostando l'inizio della traccia nell'app.</p>
+        <p class="note" style="margin:8px 0 0">Prezzi: chiusure mensili <b>indicative</b> di BTC/USD; massimo (~69.000 $, 10/11/2021) e minimo (~15.500 $, 21/11/2022) sono quelli storici.</p>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+"use strict";
+const $ = (s) => document.querySelector(s);
+const VW = 1080, VH = 1920, T = 10.5, T_PEAK = 3.4, T_LOW = 7.2;
+const SERIF = '"Playfair Display", Georgia, serif', SANS = "Inter, system-ui, sans-serif", MONO = '"IBM Plex Mono", monospace';
+const GOLD = "#d6bf86", GOLDHI = "#f1e3b6", GREEN = "#2fd27a", RED = "#ff4d4d", INK = "#f3ede0", MUTE = "#8f877a";
+const logo = new Image(); logo.src = "prv-logo.svg";
+// BTC/USD: valori indicativi (chiusure mensili), con massimo e minimo storici del ciclo
+const UP = [["gen 21", 33000], ["feb 21", 45000], ["mar 21", 58800], ["apr 21", 57700], ["mag 21", 37300], ["giu 21", 35000], ["lug 21", 41500], ["ago 21", 47100], ["set 21", 43800], ["ott 21", 61300], ["10 nov 21", 69000]];
+const DOWN = [["10 nov 21", 69000], ["dic 21", 46300], ["gen 22", 38500], ["feb 22", 43200], ["mar 22", 45500], ["apr 22", 37700], ["mag 22", 31800], ["giu 22", 19900], ["lug 22", 23300], ["ago 22", 20000], ["set 22", 19400], ["ott 22", 20500], ["21 nov 22", 15500]];
+const ALL = [...UP, ...DOWN.slice(1)], PEAK = 69000, LOW = 15500, DD = (LOW / PEAK - 1) * 100;
+
+const clamp01 = (x) => Math.max(0, Math.min(1, x));
+const easeOut = (t) => 1 - Math.pow(1 - clamp01(t), 3);
+const easeIn = (t) => Math.pow(clamp01(t), 2.2);
+const fmt$ = (v) => "$" + Math.round(v).toLocaleString("it-IT");
+function wrapLines(ctx, text, maxW) { const out = []; let l = ""; for (const w of text.split(/\s+/)) { const t = l ? l + " " + w : w; if (ctx.measureText(t).width > maxW && l) { out.push(l); l = w; } else l = t; } if (l) out.push(l); return out; }
+function center(ctx, text, y, font, color, maxW = 900, lh = 1.2) {
+  ctx.font = font; ctx.fillStyle = color; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const size = parseInt(font.match(/(\d+)px/)[1]), lines = wrapLines(ctx, text, maxW);
+  lines.forEach((l, i) => ctx.fillText(l, VW / 2, y + (i - (lines.length - 1) / 2) * size * lh));
+}
+
+// posizione lungo la serie (0 → fine) in base al tempo
+function progress(t) {
+  if (t < T_PEAK) return easeOut(t / T_PEAK) * (UP.length - 1);                              // salita
+  if (t < T_PEAK + .5) return UP.length - 1;                                                  // pausa sul massimo
+  return UP.length - 1 + easeIn((t - T_PEAK - .5) / (T_LOW - T_PEAK - .5)) * (DOWN.length - 1); // crollo
+}
+function valueAt(x) { const i = Math.min(ALL.length - 2, Math.floor(x)), f = x - i; return ALL[i][1] + (ALL[i + 1][1] - ALL[i][1]) * f; }
+
+function draw(ctx, t) {
+  const crash = t > T_PEAK + .5, x = progress(t), price = valueAt(x);
+  // sfondo
+  ctx.fillStyle = "#08080a"; ctx.fillRect(0, 0, VW, VH);
+  if (crash && t < T_LOW + .3) { const a = .18 * Math.abs(Math.sin((t - T_PEAK) * 9)); ctx.fillStyle = `rgba(255,40,40,${a})`; ctx.fillRect(0, 0, VW, VH); }
+  const g = ctx.createRadialGradient(VW / 2, VH * .5, 100, VW / 2, VH * .5, VH * .8); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,.7)"); ctx.fillStyle = g; ctx.fillRect(0, 0, VW, VH);
+  ctx.save();
+  if (crash && t < T_LOW) { const k = 10 * (1 - (t - T_PEAK - .5) / (T_LOW - T_PEAK - .5)); ctx.translate((Math.random() - .5) * k, (Math.random() - .5) * k); }   // tremolio
+  // gancio
+  center(ctx, $("#t1").value, 330, `800 64px ${SANS}`, "#fff", 900);
+  // prezzo
+  const col = crash ? RED : GREEN;
+  ctx.textAlign = "center"; ctx.textBaseline = "alphabetic"; ctx.font = `600 34px ${SANS}`; ctx.fillStyle = MUTE; ctx.fillText("BTC / USD", VW / 2, 500);
+  ctx.font = `700 118px ${MONO}`; ctx.fillStyle = col; ctx.fillText(fmt$(price), VW / 2, 630);
+  // grafico
+  const L = 90, R = 990, TOP = 720, BOT = 1380, lo = 10000, hi = 75000, n = ALL.length - 1;
+  const X = (i) => L + (i / n) * (R - L), Y = (v) => BOT - (v - lo) / (hi - lo) * (BOT - TOP);
+  ctx.strokeStyle = "rgba(255,255,255,.06)"; ctx.lineWidth = 2;
+  [20000, 40000, 60000].forEach((v) => { ctx.beginPath(); ctx.moveTo(L, Y(v)); ctx.lineTo(R, Y(v)); ctx.stroke(); ctx.font = `400 24px ${MONO}`; ctx.fillStyle = "rgba(255,255,255,.25)"; ctx.textAlign = "left"; ctx.fillText(`${v / 1000}k`, L, Y(v) - 10); });
+  const pts = []; for (let i = 0; i <= Math.floor(x); i++) pts.push([X(i), Y(ALL[i][1])]); pts.push([X(x), Y(price)]);
+  const area = ctx.createLinearGradient(0, TOP, 0, BOT); area.addColorStop(0, crash ? "rgba(255,77,77,.28)" : "rgba(47,210,122,.28)"); area.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.beginPath(); ctx.moveTo(pts[0][0], BOT); pts.forEach(([a, b]) => ctx.lineTo(a, b)); ctx.lineTo(pts[pts.length - 1][0], BOT); ctx.closePath(); ctx.fillStyle = area; ctx.fill();
+  ctx.beginPath(); pts.forEach(([a, b], i) => (i ? ctx.lineTo(a, b) : ctx.moveTo(a, b))); ctx.strokeStyle = col; ctx.lineWidth = 7; ctx.lineJoin = "round"; ctx.shadowColor = col; ctx.shadowBlur = 24; ctx.stroke(); ctx.shadowBlur = 0;
+  const [hx, hy] = pts[pts.length - 1]; ctx.beginPath(); ctx.arc(hx, hy, 14, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+  // punto di acquisto sul massimo
+  if (t > T_PEAK - .1) {
+    const px = X(UP.length - 1), py = Y(PEAK), a = easeOut((t - T_PEAK + .1) / .3);
+    ctx.globalAlpha = a; ctx.beginPath(); ctx.arc(px, py, 22, 0, Math.PI * 2); ctx.strokeStyle = GOLD; ctx.lineWidth = 5; ctx.stroke();
+    ctx.font = `800 34px ${SANS}`; ctx.fillStyle = GOLD; ctx.textAlign = "center"; ctx.fillText("TU, QUI 👆", px, py - 52); ctx.globalAlpha = 1;
+  }
+  // frasi durante la sequenza
+  if (t > T_PEAK - .2 && t < T_PEAK + .9) center(ctx, $("#t2").value, 1500, `700 54px ${SANS}`, GOLDHI, 900);
+  if (crash && t < T_LOW && $("#t3").value.trim()) center(ctx, $("#t3").value, 1500, `700 70px ${SANS}`, "#fff", 900);
+  ctx.font = `400 26px ${MONO}`; ctx.fillStyle = MUTE; ctx.textAlign = "left"; ctx.fillText(ALL[0][0], L, BOT + 50); ctx.textAlign = "right"; ctx.fillText(ALL[Math.min(n, Math.round(x))][0], R, BOT + 50);
+  ctx.restore();
+  // finale
+  if (t >= T_LOW) {
+    const a = easeOut((t - T_LOW) / .4);
+    ctx.fillStyle = `rgba(8,8,10,${.95 * a})`; ctx.fillRect(0, 0, VW, VH);
+    ctx.globalAlpha = a;
+    ctx.textAlign = "center"; ctx.textBaseline = "alphabetic"; ctx.font = `800 260px ${SANS}`; ctx.fillStyle = RED;
+    ctx.fillText(`−${Math.trunc(Math.abs(DD))}%`, VW / 2, 820 + 30 * (1 - a));
+    ctx.font = `500 40px ${SANS}`; ctx.fillStyle = INK; ctx.fillText("Bitcoin · nov 2021 → nov 2022", VW / 2, 920);
+    ctx.font = `400 30px ${MONO}`; ctx.fillStyle = MUTE; ctx.fillText(`${fmt$(PEAK)} → ${fmt$(LOW)}`, VW / 2, 980);
+    ctx.globalAlpha = easeOut((t - T_LOW - .6) / .5);
+    center(ctx, $("#t4").value, 1180, `italic 500 62px ${SERIF}`, GOLDHI, 860, 1.25);
+    center(ctx, $("#t5").value, 1380, `500 34px ${SANS}`, INK, 860);
+    if (logo.complete && logo.naturalWidth) { const lw = 110, lh = lw * logo.naturalHeight / logo.naturalWidth; ctx.drawImage(logo, (VW - lw) / 2, 1460, lw, lh); }
+    ctx.font = `400 22px ${SANS}`; ctx.fillStyle = MUTE; ctx.textAlign = "center"; ctx.fillText("Dati storici indicativi · non è un consiglio finanziario", VW / 2, 1640);
+    ctx.globalAlpha = 1;
+  }
+}
+
+let raf = 0, recording = false, msg = "";
+function play() { cancelAnimationFrame(raf); const ctx = $("#cv").getContext("2d"), t0 = performance.now();
+  const loop = (now) => { if (recording) return; const t = ((now - t0) / 1000) % (T + .8); draw(ctx, Math.min(t, T)); $("#vstat").textContent = msg || `Anteprima · ${Math.min(t, T).toFixed(1)} / ${T} s`; raf = requestAnimationFrame(loop); };
+  raf = requestAnimationFrame(loop); }
+function pickMime() { return ["video/mp4;codecs=avc1.42E01E", "video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm"].find((m) => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || ""; }
+$("#rec").onclick = async () => {
+  if (recording) return; const mime = pickMime(); if (!mime) { $("#vstat").textContent = "Questo browser non può registrare video: usa Chrome, Edge o Safari aggiornati."; return; }
+  recording = true; msg = ""; cancelAnimationFrame(raf); $("#rec").disabled = true;
+  const cv = $("#cv"), ctx = cv.getContext("2d"), stream = cv.captureStream(30), rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 10_000_000 }), chunks = [];
+  rec.ondataavailable = (e) => e.data.size && chunks.push(e.data); const done = new Promise((r) => (rec.onstop = r));
+  draw(ctx, 0); rec.start(250); const st = performance.now();
+  await new Promise((res) => { const step = (now) => { const t = (now - st) / 1000; draw(ctx, Math.min(t, T)); $("#vstat").textContent = `● Registrazione… ${Math.min(t, T).toFixed(1)} / ${T} s (non cambiare scheda)`; if (t < T + .3) requestAnimationFrame(step); else res(); }; requestAnimationFrame(step); });
+  rec.stop(); await done; stream.getTracks().forEach((x) => x.stop());
+  const ext = mime.startsWith("video/mp4") ? "mp4" : "webm", blob = new Blob(chunks, { type: mime.split(";")[0] });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `meme-btc-crollo.${ext}`; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  msg = ext === "mp4" ? `Video scaricato (MP4, ${(blob.size / 1e6).toFixed(1)} MB). Aggiungi l'audio dall'app.` : "Video scaricato in WebM: convertilo in MP4 con CapCut oppure usa Chrome aggiornato o Safari.";
+  recording = false; $("#rec").disabled = false; play();
+};
+(async () => { await Promise.all(["800 60px Inter", "700 60px Inter", "500 30px Inter", "700 60px 'IBM Plex Mono'", "italic 500 60px 'Playfair Display'"].map((f) => document.fonts.load(f))); await new Promise((r) => (logo.complete ? r() : (logo.onload = logo.onerror = r))); play(); })();
+</script>
+</body>
+</html>
