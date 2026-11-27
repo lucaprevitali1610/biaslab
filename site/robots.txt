@@ -4,5 +4,6 @@ Disallow: /bias.html
 Disallow: /edu.html
 Disallow: /meme.html
 Disallow: /crash.html
+Disallow: /domanda.html
 
 Sitemap: https://board.prvjournal.com/sitemap.xml

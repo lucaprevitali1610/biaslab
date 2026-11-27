@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Video "Domanda" — generatore · PRV</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body{background:var(--bg)}
+  .gen{max-width:1280px;margin:0 auto;padding:28px 24px 60px}
+  .gen-h{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+  .gen-h h1{margin:0;font:700 28px var(--head);letter-spacing:-.03em}
+  .gen-h .sub{color:var(--mute);margin-top:4px}
+  .gen-grid{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:22px;align-items:start}
+  .preview{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;display:grid;place-items:center}
+  .preview canvas{height:min(78vh,820px);width:auto;max-width:100%;border-radius:12px;box-shadow:0 20px 50px -20px rgba(0,0,0,.7)}
+  .card h2{margin:0 0 10px;font-size:15px}
+  .fld{display:block;margin-bottom:10px}
+  .fld span{display:flex;justify-content:space-between;font-size:12px;color:var(--mute);margin-bottom:4px}
+  .fld input,.fld textarea,.fld select{width:100%;background:var(--soft);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font:13.5px/1.45 Inter,system-ui,sans-serif}
+  .fld textarea{resize:vertical;min-height:54px}
+  .row{display:flex;gap:8px;flex-wrap:wrap}.row .btn{flex:1}
+  .note{font-size:12.5px;color:var(--mute);line-height:1.5}
+  a.back{color:var(--mute);font-size:13px;text-decoration:underline;margin-left:14px}
+  @media (max-width:1050px){.gen-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="gen">
+  <div class="gen-h">
+    <div><div class="eyebrow">PRV · strumento interno</div><h1>Video "Domanda"</h1><div class="sub">Una domanda forte nel primo secondo, la risposta in 3 schermate veloci, "seguimi per la parte 2". Verticale 1080×1920, 10–15 secondi.</div></div>
+    <div><a class="back" href="edu.html">Video educativo</a><a class="back" href="bias.html">Bias della settimana</a></div>
+  </div>
+  <div class="gen-grid">
+    <div class="preview"><canvas id="cv" width="1080" height="1920" aria-label="Anteprima del video"></canvas></div>
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <h2>Copione</h2>
+        <label class="fld"><span>Copione pronto</span><select id="preset"></select></label>
+        <label class="fld"><span>Ritmo</span><select id="pace"><option value="fast" selected>Veloce (consigliato)</option><option value="normal">Normale (più tempo per leggere)</option></select></label>
+        <label class="fld"><span>1 · Domanda (visibile dal primo fotogramma) <em>*parola* = in oro</em></span><textarea id="f_q1"></textarea></label>
+        <label class="fld"><span>2 · Risposta, schermata 1</span><textarea id="f_r1"></textarea></label>
+        <label class="fld"><span>3 · Risposta, schermata 2</span><textarea id="f_r2"></textarea></label>
+        <label class="fld"><span>4 · Risposta, schermata 3 (facoltativa)</span><textarea id="f_r3"></textarea></label>
+        <label class="fld"><span>5 · Anticipo della parte 2 (sotto "Seguimi per la parte 2")</span><input id="f_teaser"></label>
+        <p class="note" id="dur"></p>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <h2>Testo del post</h2>
+        <label class="fld"><span>Domanda per i commenti</span><input id="f_cq"></label>
+        <label class="fld"><span>Hashtag (3-5)</span><input id="f_tags"></label>
+        <div class="seg" id="net" style="margin:4px 0 10px"><button data-n="tt" class="on">TikTok</button><button data-n="ig">Instagram</button></div>
+        <label class="fld"><span id="capCount">Testo</span><textarea id="cap" style="min-height:200px" spellcheck="false"></textarea></label>
+        <div class="row"><button class="btn ghost" id="copy">Copia testo</button></div>
+        <p class="note" id="copied" style="margin:6px 0 0"></p>
+      </div>
+      <div class="card">
+        <div class="row"><button class="btn" id="rec">Crea e scarica il video <span class="arr">↓</span></button></div>
+        <div class="row" style="margin-top:8px"><button class="btn ghost" id="covDl">Scarica copertina (primo fotogramma)</button></div>
+        <p class="note" id="vstat" style="margin:10px 0 0;color:var(--ink)"></p>
+        <p class="note" style="margin:8px 0 0">Su TikTok scegli come copertina il primo fotogramma e aggiungi la musica dall'app. Se prometti la parte 2, pubblicala entro 24 ore e cita la parte 1 nella prima schermata.</p>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="vendor/mp4-muxer.js"></script>
+<script src="vendor/export-mp4.js"></script>
+<script>
+"use strict";
+const $ = (s) => document.querySelector(s);
+const VW = 1080, VH = 1920;
+const G = { gold: "#d6bf86", goldHi: "#f1e3b6", goldLo: "#8a6d33", ink: "#f3ede0", soft: "#c9c0aa", mute: "#8f877a" };
+const SANS = 'Inter, system-ui, sans-serif', SERIF = '"Playfair Display", Georgia, serif';
+const marble = new Image(); marble.src = "marmo-1.jpg";
+const logo = new Image(); logo.src = "prv-logo.svg";
+
+/* ------------------------------------------------------------ copioni pronti */
+const PRESETS = [
+  { name: "Perdi anche quando hai ragione",
+    q1: "Perché perdi soldi anche quando hai *ragione* sulla direzione?",
+    r1: "Entri troppo presto: il prezzo ti prende lo *stop*, poi va dove avevi previsto.",
+    r2: "Stop troppo stretto o posizione troppo grande: basta un movimento *normale* per buttarti fuori.",
+    r3: "Avere ragione non basta. Contano *entrata, stop e size*.",
+    teaser: "Nella parte 2: dove mettere lo stop",
+    cq: "Ti è mai successo? Raccontamelo 👇", tags: "#trading #forex #gestionedelrischio #stoploss #prvtradingclub" },
+  { name: "Il dato del venerdì (COT)",
+    q1: "Il dato che i *grandi fondi* ti mostrano ogni venerdì. E che quasi nessuno guarda.",
+    r1: "Si chiama *COT report*. Lo pubblica la CFTC ogni venerdì.",
+    r2: "Mostra come sono posizionati gli *speculatori* su valute, indici e materie prime.",
+    r3: "Conta la *direzione*: se il netto long cresce da settimane, il posizionamento si rafforza.",
+    teaser: "Nella parte 2: come leggerlo in 30 secondi",
+    cq: "Lo conoscevi? Scrivi SÌ o NO 👇", tags: "#cotreport #forex #trading #analisifondamentale #prvtradingclub" },
+  { name: "Il tuo +40% è vero?",
+    q1: "Il tuo portafoglio fa *+40%*? Probabilmente non è il tuo rendimento.",
+    r1: "Se versi soldi nel tempo, la percentuale mescola il *mercato* e i tuoi *versamenti*.",
+    r2: "Chi ha messo il grosso dei soldi *tardi* vede +40%, ma guadagna molto meno.",
+    r3: "Il numero giusto è l'*XIRR*: il rendimento annuo dei soldi che hai messo davvero.",
+    teaser: "Nella parte 2: come calcolarlo gratis",
+    cq: "Sai qual è il tuo rendimento annuo reale? 👇", tags: "#pac #etf #investimenti #finanzapersonale #prvtradingclub" },
+  { name: "Settembre mese nero?",
+    q1: "*Settembre* è davvero un mese nero per le borse?",
+    r1: "In media è il mese più *debole* della storia dell'S&P 500.",
+    r2: "Ma la media inganna: in tanti anni settembre ha chiuso in *positivo*.",
+    r3: "Guarda sempre la *% di anni positivi*, non solo la media.",
+    teaser: "Nella parte 2: la stagionalità di ogni mercato",
+    cq: "Tu compri o vendi a settembre? 👇", tags: "#stagionalità #borsa #sp500 #trading #prvtradingclub" },
+  { name: "— Vuoto (scrivi la tua) —", q1: "", r1: "", r2: "", r3: "", teaser: "", cq: "Tu cosa ne pensi? 👇", tags: "#trading #investimenti #prvtradingclub" },
+];
+const FIELDS = ["q1", "r1", "r2", "r3", "teaser"], POST = ["cq", "tags"];
+$("#preset").innerHTML = PRESETS.map((p, i) => `<option value="${i}">${p.name}</option>`).join("");
+function loadPreset(i) { const p = PRESETS[i]; [...FIELDS, ...POST].forEach((k) => ($("#f_" + k).value = p[k] || "")); build(); }
+$("#preset").onchange = (e) => loadPreset(+e.target.value);
+$("#pace").onchange = () => build();
+FIELDS.forEach((k) => $("#f_" + k).addEventListener("input", build));
+POST.forEach((k) => $("#f_" + k).addEventListener("input", showCaption));
+
+/* ------------------------------------------------------------ disegno */
+const clamp01 = (x) => Math.max(0, Math.min(1, x));
+const easeOut = (t) => 1 - Math.pow(1 - clamp01(t), 3);
+const plain = (s) => String(s || "").replace(/\*/g, "");
+function goldGrad(ctx, x0, x1) { const g = ctx.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, G.goldHi); g.addColorStop(.5, G.gold); g.addColorStop(1, G.goldLo); return g; }
+function spaced(ctx, s, x, y, font, color, sp) {
+  ctx.font = font; const w = [...s].reduce((a, ch) => a + ctx.measureText(ch).width + sp, -sp);
+  let cx = x - w / 2; ctx.fillStyle = color; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  for (const ch of s) { ctx.fillText(ch, cx, y); cx += ctx.measureText(ch).width + sp; }
+}
+// testo con parole in oro (*così*): divide in parole, va a capo, centra ogni riga
+function richWords(text) {
+  // ogni parola è una sequenza di pezzi (testo + oro sì/no): la punteggiatura resta attaccata alla parola in oro
+  const out = []; let gold = false, cur = null;
+  for (const ch of String(text || "").trim()) {
+    if (ch === "*") { gold = !gold; continue; }
+    if (/\s/.test(ch)) { cur = null; continue; }
+    if (!cur) { cur = { parts: [] }; out.push(cur); }
+    const last = cur.parts[cur.parts.length - 1];
+    if (last && last.gold === gold) last.t += ch; else cur.parts.push({ t: ch, gold });
+  }
+  return out;
+}
+function layout(ctx, words, font, maxW) {
+  ctx.font = font; const sp = ctx.measureText(" ").width, lines = []; let cur = [], cw = 0;
+  words.forEach((x) => { const parts = x.parts.map((q) => ({ ...q, mw: ctx.measureText(q.t).width })), w = parts.reduce((a, q) => a + q.mw, 0);
+    if (cur.length && cw + sp + w > maxW) { lines.push({ ws: cur, w: cw }); cur = []; cw = 0; } cur.push({ parts, mw: w }); cw += (cur.length > 1 ? sp : 0) + w; });
+  if (cur.length) lines.push({ ws: cur, w: cw });
+  return { lines, sp };
+}
+// bilancia le righe (niente parola orfana) restringendo la larghezza finché il numero di righe resta uguale
+function balanced(ctx, words, font, maxW) {
+  let L = layout(ctx, words, font, maxW); const n = L.lines.length; let w = maxW;
+  while (n > 1 && w > maxW * .55) { const t = layout(ctx, words, font, w - 12); if (t.lines.length !== n) break; L = t; w -= 12; }
+  return L;
+}
+function rich(ctx, text, o, q = 1) {
+  const words = richWords(text); let size = o.size, L, font;
+  for (;;) { font = `${o.weight || 600} ${size}px ${o.family || SANS}`; L = balanced(ctx, words, font, o.maxW); if (L.lines.length <= o.maxLines || size <= o.min) break; size -= 4; }
+  const lh = size * (o.lh || 1.26), top = o.cy - (L.lines.length - 1) * lh / 2;
+  ctx.textBaseline = "middle"; ctx.textAlign = "left"; ctx.font = font;
+  L.lines.forEach((ln, i) => {
+    const qi = o.stagger ? easeOut((q - i * .12) / .5) : q;
+    let x = VW / 2 - ln.w / 2; const y = top + i * lh + (1 - qi) * 22;
+    ctx.globalAlpha = qi * (o.alpha ?? 1);
+    ln.ws.forEach((wd) => { wd.parts.forEach((q) => { ctx.fillStyle = q.gold ? goldGrad(ctx, x, x + q.mw) : o.color || G.ink; ctx.fillText(q.t, x, y); x += q.mw; }); x += L.sp; });
+  });
+  ctx.globalAlpha = 1;
+  return { top, bottom: top + (L.lines.length - 1) * lh };
+}
+// candele dorate sottili sullo sfondo, che salgono piano (come nel video da 727 visualizzazioni)
+const CANDLES = (() => { let s = 7; const r = () => (s = (s * 16807) % 2147483647) / 2147483647; return [...Array(11)].map((_, i) => ({ x: 30 + i * 96 + r() * 40, y: r() * 1920, h: 90 + r() * 260, w: 16 + r() * 14, sp: 12 + r() * 22, a: .14 + r() * .3, up: r() > .4 })); })();
+function bg(ctx, t, T) {
+  const z = 1.06 + t / Math.max(T, 1) * .08;
+  if (marble.complete && marble.naturalWidth) { const r = Math.max(VW / marble.naturalWidth, VH / marble.naturalHeight) * z, w = marble.naturalWidth * r, h = marble.naturalHeight * r; ctx.drawImage(marble, (VW - w) / 2 - t * 3, (VH - h) / 2 - t * 5, w, h); }
+  else { ctx.fillStyle = "#0b0a09"; ctx.fillRect(0, 0, VW, VH); }
+  ctx.fillStyle = "rgba(6,6,7,.66)"; ctx.fillRect(0, 0, VW, VH);
+  CANDLES.forEach((c) => {
+    const y = ((c.y - t * c.sp) % 1920 + 1920) % 1920 - 100;
+    ctx.globalAlpha = c.a; ctx.fillStyle = c.up ? G.gold : G.goldLo;
+    ctx.fillRect(c.x + c.w / 2 - 1.5, y - c.h * .35, 3, c.h * 1.7);        // stoppino
+    ctx.beginPath(); ctx.roundRect(c.x, y, c.w, c.h, 3); ctx.fill();        // corpo
+    if (!c.up) { ctx.globalAlpha = c.a * .6; ctx.fillStyle = "#0a0908"; ctx.beginPath(); ctx.roundRect(c.x + 3, y + 3, c.w - 6, c.h - 6, 2); ctx.fill(); } // candela ribassista: vuota
+  });
+  ctx.globalAlpha = 1;
+  // velo centrale per far leggere il testo
+  const v = ctx.createRadialGradient(VW / 2, VH * .47, 60, VW / 2, VH * .47, VH * .55); v.addColorStop(0, "rgba(5,5,6,.72)"); v.addColorStop(.55, "rgba(5,5,6,.35)"); v.addColorStop(1, "rgba(0,0,0,.55)"); ctx.fillStyle = v; ctx.fillRect(0, 0, VW, VH);
+}
+function mark(ctx) { if (logo.complete && logo.naturalWidth) { const lw = 92, lh = lw * logo.naturalHeight / logo.naturalWidth; ctx.globalAlpha = .55; ctx.drawImage(logo, VW - lw - 70, 1660, lw, lh); ctx.globalAlpha = 1; } }
+
+let S = { scenes: [], T: 0 };
+const words = (s) => plain(s).trim().split(/\s+/).filter(Boolean).length;
+function dur(text, kind) {
+  const n = words(text), fast = $("#pace").value === "fast";
+  if (kind === "q") return fast ? Math.min(3.6, Math.max(2.2, .9 + n * .22)) : Math.min(5, Math.max(3, 1.2 + n * .3));
+  return fast ? Math.min(3.4, Math.max(1.6, .6 + n * .2)) : Math.min(5, Math.max(2.4, 1 + n * .3));
+}
+function build() {
+  const v = Object.fromEntries(FIELDS.map((k) => [k, $("#f_" + k).value.trim()]));
+  const sc = [];
+  if (v.q1) sc.push({ k: "q", text: v.q1, d: dur(v.q1, "q") });
+  const rs = [v.r1, v.r2, v.r3].filter(Boolean);
+  rs.forEach((t, i) => sc.push({ k: "r", n: i + 1, of: rs.length, text: t, d: dur(t, "r") }));
+  sc.push({ k: "end", text: v.teaser, d: $("#pace").value === "fast" ? 2.4 : 3.2 });
+  let t = 0; sc.forEach((s) => { s.s = t; t += s.d; s.e = t; });
+  S = { scenes: sc, T: t };
+  $("#dur").textContent = `Durata: ${t.toFixed(1)} secondi · ${sc.length} schermate${t > 18 ? " — un po' lungo: questo formato rende sotto i 15 secondi" : ""}`;
+  showCaption();
+}
+function drawScene(ctx, s, p, t) {
+  if (s.k === "q") {
+    // visibile al 100% dal primo fotogramma: è anche la copertina
+    spaced(ctx, "PRV TRADING CLUB", VW / 2, 560, `500 24px ${SANS}`, G.gold, 7);
+    const r = rich(ctx, s.text, { size: 84, min: 56, maxW: 880, maxLines: 6, cy: 900, weight: 600 }, 1);
+    // leggero "respiro" della linea dorata sotto la domanda
+    const w = 160 + 40 * Math.sin(t * 3);
+    const g = ctx.createLinearGradient(VW / 2 - w, 0, VW / 2 + w, 0); g.addColorStop(0, "rgba(214,191,134,0)"); g.addColorStop(.5, "rgba(214,191,134,.75)"); g.addColorStop(1, "rgba(214,191,134,0)");
+    ctx.fillStyle = g; ctx.fillRect(VW / 2 - w, r.bottom + 90, w * 2, 2);
+  } else if (s.k === "r") {
+    const q = easeOut(p / .14);
+    ctx.globalAlpha = q; spaced(ctx, `${s.n} / ${s.of}`, VW / 2, 620, `600 28px ${SANS}`, G.gold, 8); ctx.globalAlpha = 1;
+    rich(ctx, s.text, { size: 70, min: 46, maxW: 860, maxLines: 6, cy: 920, weight: 500, stagger: true }, easeOut(p / .3));
+  } else {
+    const q = easeOut(p / .2);
+    ctx.globalAlpha = q;
+    if (logo.complete && logo.naturalWidth) { const lw = 170, lh = lw * logo.naturalHeight / logo.naturalWidth; ctx.drawImage(logo, (VW - lw) / 2, 560, lw, lh); }
+    ctx.globalAlpha = 1;
+    const r = rich(ctx, "Seguimi per la *parte 2*", { family: SERIF, weight: 500, size: 92, min: 60, maxW: 860, maxLines: 3, cy: 930 }, easeOut((p - .05) / .3));
+    if (s.text) { ctx.globalAlpha = easeOut((p - .25) / .3); rich(ctx, s.text, { size: 42, min: 32, maxW: 820, maxLines: 3, cy: r.bottom + 120, weight: 400, color: G.soft }, 1); ctx.globalAlpha = 1; }
+    ctx.globalAlpha = easeOut((p - .4) / .3) * .8; ctx.font = `400 21px ${SANS}`; ctx.fillStyle = G.mute; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+    ctx.fillText("Contenuto informativo, non è un consiglio finanziario.", VW / 2, 1520); ctx.globalAlpha = 1;
+  }
+}
+function drawFrame(ctx, t) {
+  ctx.clearRect(0, 0, VW, VH); bg(ctx, t, S.T);
+  const s = S.scenes.find((x) => t >= x.s && t < x.e) || S.scenes[S.scenes.length - 1];
+  if (s) drawScene(ctx, s, (t - s.s) / s.d, t);
+  if (!s || s.k !== "end") mark(ctx);
+  // barra di avanzamento sottile in basso: invita a restare fino alla fine
+  ctx.fillStyle = "rgba(214,191,134,.15)"; ctx.fillRect(0, VH - 8, VW, 8); ctx.fillStyle = G.gold; ctx.fillRect(0, VH - 8, VW * clamp01(t / S.T), 8);
+}
+
+/* ------------------------------------------------------------ testo del post */
+let net = "tt";
+const val = (k) => $("#f_" + k).value.trim();
+function caption() {
+  const q = plain(val("q1")), tags = val("tags"), cq = val("cq"), teaser = plain(val("teaser"));
+  if (net === "tt") return [`${q} 👀 ${cq}`, tags].filter(Boolean).join(" ");
+  return [q, "", ...["r1", "r2", "r3"].map(val).filter(Boolean).map((x) => `▸ ${plain(x)}`), "", `${teaser ? teaser + ". " : ""}Seguimi per non perdere la parte 2.`, "", cq, "", tags].join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+function showCaption() {
+  $("#cap").value = caption(); const n = [...$("#cap").value].length;
+  $("#capCount").textContent = net === "tt" ? `TikTok · ${n} caratteri (breve: conta la prima riga)` : `Instagram · ${n} caratteri`;
+}
+$("#net").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; net = b.dataset.n; document.querySelectorAll("#net button").forEach((x) => x.classList.toggle("on", x === b)); showCaption(); };
+$("#copy").onclick = async () => { try { await navigator.clipboard.writeText($("#cap").value); $("#copied").textContent = "Testo copiato ✓"; } catch { $("#cap").select(); document.execCommand("copy"); $("#copied").textContent = "Testo selezionato: premi Ctrl+C / Cmd+C se non è stato copiato."; } };
+
+const slug = () => plain(val("q1") || "domanda").toLowerCase().normalize("NFD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+$("#covDl").onclick = () => { const c = document.createElement("canvas"); c.width = VW; c.height = VH; drawFrame(c.getContext("2d"), 0);
+  c.toBlob((b) => { const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `copertina-${slug()}.png`; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800); }, "image/png"); };
+
+/* ------------------------------------------------------------ anteprima ed export MP4 */
+let raf = 0, recording = false, msg = "";
+function play() {
+  cancelAnimationFrame(raf); const ctx = $("#cv").getContext("2d"), t0 = performance.now();
+  const loop = (now) => { if (recording) return; const t = ((now - t0) / 1000) % (S.T + .6); drawFrame(ctx, Math.min(t, S.T - .01)); $("#vstat").textContent = msg || `Anteprima · ${Math.min(t, S.T).toFixed(1)} / ${S.T.toFixed(1)} s`; raf = requestAnimationFrame(loop); };
+  raf = requestAnimationFrame(loop);
+}
+$("#rec").onclick = async () => {
+  if (recording) return;
+  if (!(window.PRVExport && PRVExport.supported())) { $("#vstat").textContent = "Questo browser non può creare il video: usa Chrome, Edge o Safari aggiornati."; return; }
+  recording = true; msg = ""; cancelAnimationFrame(raf); $("#rec").disabled = true;
+  try {
+    const blob = await PRVExport.mp4({ duration: S.T, draw: (c, t) => drawFrame(c, t), onProgress: (q) => ($("#vstat").textContent = `Creazione del video… ${Math.round(q * 100)}%`) });
+    PRVExport.save(blob, `domanda-${slug()}.mp4`);
+    msg = `Video scaricato (MP4, ${(blob.size / 1e6).toFixed(1)} MB, ${S.T.toFixed(0)} s).`;
+  } catch (e) { msg = "Errore nella creazione del video: " + e.message; }
+  $("#vstat").textContent = msg; recording = false; $("#rec").disabled = false; play();
+};
+(async () => {
+  await Promise.all(["500 60px 'Playfair Display'", "400 30px Inter", "500 30px Inter", "600 30px Inter"].map((f) => document.fonts.load(f)));
+  await Promise.all([marble, logo].map((im) => new Promise((r) => (im.complete ? r() : (im.onload = im.onerror = r)))));
+  loadPreset(0); play();
+})();
+</script>
+</body>
+</html>
