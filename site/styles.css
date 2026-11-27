@@ -451,3 +451,19 @@ details summary::marker{color:var(--faint)}
 .flink:hover{color:var(--ink)}
 
 #donateWrap[hidden]{display:none}
+
+/* ================================================= home sito e social */
+.home-btn{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 13px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink2);font-size:12.5px;font-weight:600;text-decoration:none;flex:none;transition:.15s;white-space:nowrap}
+.home-btn:hover{color:var(--ink);border-color:var(--faint)}
+.home-btn svg{width:16px;height:16px}
+.side-social{display:flex;gap:6px;margin-top:auto;padding:0 4px 10px}
+.side-social a{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;color:var(--mute);border:1px solid var(--line);transition:.15s}
+.side-social a:hover{color:var(--ink);border-color:var(--faint)}
+.side-social svg{width:16px;height:16px}
+.side-social+.side-foot{margin-top:0}
+.foot{flex-wrap:wrap;gap:8px 16px}
+@media (max-width:900px){
+  .home-btn{margin-left:auto;width:38px;padding:0;justify-content:center}.home-btn span{display:none}
+  .theme-btn{margin-left:0}
+  .side-social{display:none}
+}
