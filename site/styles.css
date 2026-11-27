@@ -462,3 +462,9 @@ details summary::marker{color:var(--faint)}
 .side-social+.side-foot{margin-top:0}
 .foot{flex-wrap:wrap;gap:8px 16px}
 @media (max-width:900px){.side-social{display:none}}
+
+/* ================================================= lingua IT/EN */
+.lang-sw{display:inline-flex;flex:none;border:1px solid var(--line);border-radius:999px;padding:3px;background:var(--card)}
+.lang-sw button{padding:4px 9px;border-radius:999px;font:600 11px/1.2 inherit;letter-spacing:.04em;color:var(--mute);background:none;border:0;cursor:pointer}
+.lang-sw button[aria-pressed=true]{background:var(--soft);color:var(--ink)}
+@media (max-width:900px){.lang-sw{margin-left:auto}.theme-btn{margin-left:0}}

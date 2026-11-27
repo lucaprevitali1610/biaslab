@@ -11,10 +11,10 @@ const S = {
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const nf = (v, d = 2) => v == null || !isFinite(v) ? "—" : Number(v).toLocaleString("it-IT", { minimumFractionDigits: d, maximumFractionDigits: d });
+const nf = (v, d = 2) => v == null || !isFinite(v) ? "—" : Number(v).toLocaleString(LOC, { minimumFractionDigits: d, maximumFractionDigits: d });
 const sgn = (v) => v == null ? "—" : (v > 0 ? "+" : "") + v;
 const sgnf = (v, d = 2) => v == null || !isFinite(v) ? "—" : (v > 0 ? "+" : "") + nf(v, d);
-const kfmt = (v) => v == null ? "—" : (v > 0 ? "+" : "") + Math.round(v).toLocaleString("it-IT");
+const kfmt = (v) => v == null ? "—" : (v > 0 ? "+" : "") + Math.round(v).toLocaleString(LOC);
 
 /* --- tema chiaro/scuro: colori dei grafici adattati al tema attivo --- */
 const isDark = () => document.documentElement.dataset.theme === "dark";
@@ -180,7 +180,7 @@ function spark(values, w = 120, h = 30) {
   return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${zy}<path d="${d}" fill="none" stroke="${up ? "#12a568" : "#ee4637"}" stroke-width="1.6"/></svg>`;
 }
 
-const MONTHS = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
+const MONTHS = LANG === "en" ? MON_EN : MON_IT;
 const fmtDate = (s) => { if (!s) return ""; const [y, m, d] = s.split("-"); return `${+d} ${MONTHS[+m - 1]} ${y}`; };
 function dateTicks(dates, max = 7) {
   const n = dates.length; if (!n) return []; const out = []; let lastKey = null;
@@ -201,7 +201,7 @@ async function load() {
   // titolo della pagina fisso (impostato in index.html, usato da Google)
   if (S.board.demo) $("#demo").innerHTML = `<div class="demo-banner"><b>Dati dimostrativi.</b> Sono numeri sintetici per provare l'interfaccia: i dati reali arrivano quando la pipeline gira online.</div>`;
   const g = new Date(S.board.generated);
-  $("#stamp").textContent = `Aggiornato il ${g.toLocaleDateString("it-IT", { day: "numeric", month: "short" })}, ${g.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
+  $("#stamp").textContent = `Aggiornato il ${g.toLocaleDateString(LOC, { day: "numeric", month: "short" })}, ${g.toLocaleTimeString(LOC, { hour: "2-digit", minute: "2-digit" })}`;
   $("#foot-gen").textContent = `· Dati al ${fmtDate(S.board.as_of)}`;
   $("#side-foot").innerHTML = `<b><span class="live"></span>Aggiornamento automatico</b>Ogni mattina e il venerdì sera dopo il report COT.<br>Ultimo: ${fmtDate(S.board.as_of)}`;
   document.addEventListener("keydown", (e) => { if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); $("#goto").focus(); } if (e.key === "Escape") closeDrawer(); });
@@ -383,7 +383,7 @@ async function openDrawer(id) {
 }
 
 function fmtVal(v, m) { if (v == null) return "—"; const d = m.unit === "k" ? 0 : m.unit === "idx" ? 1 : 2; return nf(v, d) + (m.unit.startsWith("%") ? "%" : ""); }
-const val = (x, k, m) => x[k + "_s"] ? esc(String(x[k + "_s"]).replace(".", ",")) : fmtVal(x[k], m);
+const val = (x, k, m) => x[k + "_s"] ? esc(LANG === "en" ? String(x[k + "_s"]) : String(x[k + "_s"]).replace(".", ",")) : fmtVal(x[k], m);
 function surp(x, m) {
   if (x.surprise == null || x.forecast == null) return `<span class="muted">—</span>`;
   const ref = String(x.actual_s || ""), suf = (ref.match(/[KMB%]$/i) || [""])[0].toUpperCase();
@@ -787,7 +787,7 @@ function tvChart(el, id, height = 600) {
   sc.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
   sc.async = true; sc.type = "text/javascript";
   sc.textContent = JSON.stringify({
-    autosize: true, symbol: tvSymbol(id), interval: "D", timezone: "Europe/Rome", theme: isDark() ? "dark" : "light", style: "1", locale: "it",
+    autosize: true, symbol: tvSymbol(id), interval: "D", timezone: "Europe/Rome", theme: isDark() ? "dark" : "light", style: "1", locale: LANG,
     backgroundColor: isDark() ? "#16181d" : "#ffffff", gridColor: isDark() ? "rgba(255, 255, 255, 0.06)" : "rgba(20, 22, 27, 0.05)", allow_symbol_change: true, withdateranges: true,
     hide_side_toolbar: false, save_image: false, calendar: false, details: false, support_host: "https://www.tradingview.com",
   });
