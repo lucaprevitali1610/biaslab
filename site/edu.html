@@ -62,6 +62,16 @@
         </div>
         <div class="row" style="margin-top:4px"><button class="btn ghost" id="covDl">Scarica copertina</button></div>
       </div>
+      <div class="card" style="margin-bottom:14px">
+        <h2>Testo del post</h2>
+        <label class="fld"><span>Titolo / parole chiave (TikTok e YouTube)</span><input id="f_title"></label>
+        <label class="fld"><span>Domanda per i commenti</span><input id="f_q"></label>
+        <label class="fld"><span>Hashtag (3-5)</span><input id="f_tags"></label>
+        <div class="seg" id="net" style="margin:4px 0 10px"><button data-n="ig" class="on">Instagram</button><button data-n="tt">TikTok</button><button data-n="yt">YouTube Shorts</button></div>
+        <label class="fld"><span id="capCount">Testo</span><textarea id="cap" style="min-height:260px" spellcheck="false"></textarea></label>
+        <div class="row"><button class="btn ghost" id="copy">Copia testo</button></div>
+        <p class="note" id="copied" style="margin:6px 0 0"></p>
+      </div>
       <div class="card">
         <div class="row"><button class="btn" id="rec">Registra e scarica il video <span class="arr">↓</span></button></div>
         <p class="note" id="vstat" style="margin:10px 0 0;color:var(--ink)"></p>
@@ -82,7 +92,7 @@ const CTA_DEF = "Salvalo per dopo. Lo trovi gratis: link in bio.";
 
 /* ------------------------------------------------------------ copioni pronti */
 const PRESETS = [
-  { name: "Cos'è il COT report", num: 1, kw: "COT", sub: "Cosa stanno facendo i grandi fondi", topic: "COT REPORT",
+  { name: "Cos'è il COT report", title: "Cos'è il COT report e perché i trader lo ignorano", q: "Tu lo guardi prima di fare trading? Scrivimelo nei commenti 👇", tags: "#cotreport #forex #trading #analisifondamentale #prvtradingclub", num: 1, kw: "COT", sub: "Cosa stanno facendo i grandi fondi", topic: "COT REPORT",
     hook: "I grandi fondi ti dicono ogni settimana cosa stanno facendo. Quasi nessuno lo legge.",
     problem: "Il COT report della CFTC mostra come sono posizionati gli speculatori sui futures di valute, indici e materie prime.",
     p1: "Esce ogni venerdì, con i dati del martedì precedente.",
@@ -90,7 +100,7 @@ const PRESETS = [
     p3: "Più del numero conta la direzione: se il netto cresce settimana dopo settimana, il posizionamento si sta rafforzando.",
     take: "Il COT non dà segnali d'ingresso: ti dice da che parte sta il denaro grosso.",
     cta: "Salvalo per dopo. Il COT di valute, indici e materie prime, gratis: link in bio." },
-  { name: "Stagionalità: come usarla", num: 2, kw: "Stagionalità", sub: "Come leggerla senza farsi ingannare", topic: "STAGIONALITÀ",
+  { name: "Stagionalità: come usarla", title: "Stagionalità nel trading: come usarla senza farsi ingannare", q: "Ti è mai capitato di entrare solo perché \"quel mese di solito sale\"? 👇", tags: "#stagionalità #forex #trading #analisifondamentale #prvtradingclub", num: 2, kw: "Stagionalità", sub: "Come leggerla senza farsi ingannare", topic: "STAGIONALITÀ",
     hook: "Dicembre è un buon mese per l'oro? La stagionalità risponde, ma va letta bene.",
     problem: "Molti guardano solo la media e la prendono come una previsione.",
     p1: "È il comportamento medio di un mercato nello stesso periodo dell'anno, su 5, 10 o 15 anni.",
@@ -98,7 +108,7 @@ const PRESETS = [
     p3: "Usala come conferma del bias macro e del COT, mai da sola.",
     take: "La stagionalità è un vento a favore, non il motore.",
     cta: "Salvalo per dopo. La stagionalità di ogni mercato, gratis: link in bio." },
-  { name: "XIRR: il tuo +40% è vero?", num: 3, kw: "XIRR", sub: "Il rendimento reale del tuo portafoglio", topic: "RENDIMENTO REALE",
+  { name: "XIRR: il tuo +40% è vero?", title: "XIRR: il vero rendimento del tuo PAC", q: "Sai qual è il rendimento annuo reale del tuo PAC? Scrivi il numero 👇", tags: "#pac #etf #investimenti #finanzapersonale #prvtradingclub", num: 3, kw: "XIRR", sub: "Il rendimento reale del tuo portafoglio", topic: "RENDIMENTO REALE",
     hook: "Il tuo portafoglio segna +40%? Forse non è il tuo rendimento.",
     problem: "Se hai versato soldi nel tempo, come in un PAC, la percentuale semplice inganna.",
     p1: "Il TWR misura le tue scelte: quanto avrebbero reso 100 € investiti all'inizio.",
@@ -106,7 +116,7 @@ const PRESETS = [
     p3: "Per un PAC, l'XIRR è il rendimento annuo reale del capitale che hai messo.",
     take: "Due numeri, due domande diverse: non confonderli.",
     cta: "Salvalo per dopo. Il tracker che calcola XIRR e TWR, gratis: link in bio." },
-  { name: "Drawdown: quanto puoi perdere", num: 4, kw: "Drawdown", sub: "Il numero che conta più del rendimento", topic: "DRAWDOWN",
+  { name: "Drawdown: quanto puoi perdere", title: "Drawdown: il numero che conta più del rendimento", q: "Qual è il drawdown peggiore che hai vissuto? Sii sincero 👇", tags: "#drawdown #trading #gestionedelrischio #investimenti #prvtradingclub", num: 4, kw: "Drawdown", sub: "Il numero che conta più del rendimento", topic: "DRAWDOWN",
     hook: "Un +30% non dice niente se prima hai perso il 40%.",
     problem: "Il drawdown misura la discesa massima dal picco precedente.",
     p1: "Per recuperare un −50% serve un +100%.",
@@ -114,16 +124,18 @@ const PRESETS = [
     p3: "Confrontalo sempre con il rendimento: +10% con −35% di drawdown è un'altra storia.",
     take: "Prima di chiederti quanto puoi guadagnare, chiediti quanto puoi perdere.",
     cta: "Salvalo per dopo. Il tracker che misura il tuo drawdown, gratis: link in bio." },
-  { name: "— Vuoto (scrivi il tuo) —", num: 5, kw: "", sub: "", topic: "", hook: "", problem: "", p1: "", p2: "", p3: "", take: "", cta: CTA_DEF },
+  { name: "— Vuoto (scrivi il tuo) —", title: "", q: "Tu cosa ne pensi? Scrivimelo nei commenti 👇", tags: "#trading #investimenti #prvtradingclub", num: 5, kw: "", sub: "", topic: "", hook: "", problem: "", p1: "", p2: "", p3: "", take: "", cta: CTA_DEF },
 ];
 const FIELDS = ["topic", "hook", "problem", "p1", "p2", "p3", "take", "cta"];
 const COVER_FIELDS = ["num", "kw", "sub"];
+const POST_FIELDS = ["title", "q", "tags"];
 $("#preset").innerHTML = PRESETS.map((p, i) => `<option value="${i}">${p.name}</option>`).join("");
-function loadPreset(i) { const p = PRESETS[i]; FIELDS.forEach((k) => ($("#f_" + k).value = p[k])); COVER_FIELDS.forEach((k) => ($("#f_" + k).value = p[k])); build(); refreshCover(); }
+function loadPreset(i) { const p = PRESETS[i]; FIELDS.forEach((k) => ($("#f_" + k).value = p[k])); COVER_FIELDS.forEach((k) => ($("#f_" + k).value = p[k])); POST_FIELDS.forEach((k) => ($("#f_" + k).value = p[k] || "")); build(); refreshCover(); }
 $("#preset").onchange = (e) => loadPreset(+e.target.value);
 $("#pace").onchange = () => build();
 FIELDS.forEach((k) => $("#f_" + k).addEventListener("input", build));
-COVER_FIELDS.forEach((k) => $("#f_" + k).addEventListener("input", () => refreshCover()));
+COVER_FIELDS.forEach((k) => $("#f_" + k).addEventListener("input", () => { refreshCover(); showCaption(); }));
+POST_FIELDS.forEach((k) => $("#f_" + k).addEventListener("input", () => showCaption()));
 
 /* ------------------------------------------------------------ disegno */
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
@@ -186,6 +198,7 @@ function build() {
   sc.push({ k: "cta", text: v.cta || CTA_DEF, d: $("#pace").value === "normal" ? 3.2 : 2.4 });
   let t = 0; sc.forEach((s) => { s.s = t; t += s.d; s.e = t; });
   S = { scenes: sc, T: t, topic: v.topic };
+  if (typeof showCaption === "function") showCaption();
   $("#dur").textContent = `Durata: ${t.toFixed(1)} secondi · ${sc.length} scene${t > 45 ? " — un po' lungo: sotto i 40 s rende meglio" : ""}`;
 }
 function drawScene(ctx, s, p) {
@@ -223,6 +236,44 @@ function drawFrame(ctx, t) {
   const s = S.scenes.find((x) => t >= x.s && t < x.e) || S.scenes[S.scenes.length - 1];
   if (s) drawScene(ctx, s, s === S.scenes[S.scenes.length - 1] ? Math.min(.89, (t - s.s) / s.d) : (t - s.s) / s.d);
 }
+
+/* ------------------------------------------------------------ testo del post (Instagram, TikTok, YouTube) */
+let net = "ig";
+const val = (k) => $("#f_" + k).value.trim();
+function caption() {
+  const num = String(+val("num") || 1).padStart(2, "0"), tags = val("tags"), q = val("q");
+  const title = val("title") || val("kw") || "Lezione";
+  // la chiusura del video senza "Salvalo per dopo" (nel post c'è già la riga dedicata)
+  const cta = val("cta").replace(/^\s*salvalo per dopo\.?\s*/i, "").trim();
+  const secs = Math.round(S.T || 20);
+  if (net === "tt") return [`${title} 👀 ${q}`, tags].filter(Boolean).join(" ");
+  if (net === "yt") return [`TITOLO: ${title} (in ${secs} secondi)`, ``, `${val("hook")}`, ``, `${q}`, `${cta}`, ``, `Lezione ${num} · PRV Academy`, tags].join("\n");
+  return [
+    val("hook"),
+    ``,
+    val("problem"),
+    ``,
+    ...["p1", "p2", "p3"].map(val).filter(Boolean).map((x) => `📌 ${x}`),
+    ``,
+    val("take"),
+    ``,
+    q,
+    `💾 Salvalo per quando ti servirà.`,
+    ``,
+    cta,
+    ``,
+    `Lezione ${num} · PRV Academy`,
+    tags,
+  ].filter((x, i, a) => !(x === "" && a[i - 1] === "")).join("\n").trim();
+}
+function showCaption() {
+  if (!$("#cap")) return;
+  $("#cap").value = caption();
+  const n = [...$("#cap").value].length;
+  $("#capCount").textContent = net === "tt" ? `TikTok · ${n} caratteri (breve: conta la prima riga e le parole chiave)` : net === "yt" ? `YouTube Shorts · titolo (max 100 caratteri) e descrizione` : `Instagram · ${n} caratteri (la prima riga è l'unica visibile senza "altro")`;
+}
+$("#net").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; net = b.dataset.n; document.querySelectorAll("#net button").forEach((x) => x.classList.toggle("on", x === b)); showCaption(); };
+$("#copy").onclick = async () => { try { await navigator.clipboard.writeText($("#cap").value); $("#copied").textContent = "Testo copiato ✓"; } catch { $("#cap").select(); document.execCommand("copy"); $("#copied").textContent = "Testo selezionato: premi Ctrl+C / Cmd+C se non è stato copiato."; } };
 
 /* ------------------------------------------------------------ copertina della lezione (1080×1920) */
 // tutto il contenuto sta nella fascia 3:4 centrale (y 240–1680), quella che la griglia del profilo mostra
