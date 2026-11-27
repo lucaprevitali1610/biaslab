@@ -80,6 +80,8 @@
     </div>
   </div>
 </div>
+<script src="vendor/mp4-muxer.js"></script>
+<script src="vendor/export-mp4.js"></script>
 <script>
 "use strict";
 const $ = (s) => document.querySelector(s);
@@ -568,6 +570,17 @@ function pickMime() {
 }
 async function recordVideo() {
   if (recording) return;
+  if (window.PRVExport && PRVExport.supported()) {                 // MP4 standard, fotogramma per fotogramma
+    recording = true; cancelAnimationFrame(vRaf); $("#dl").disabled = true; vMsg = "";
+    try {
+      const blob = await PRVExport.mp4({ duration: VDUR, draw: (c, t) => drawVideoFrame(c, t), onProgress: (q) => ($("#vstat").textContent = `Creazione del video… ${Math.round(q * 100)}%`) });
+      PRVExport.save(blob, `reel-bias-${D.week.iso}.mp4`);
+      vMsg = `Video scaricato (MP4, ${(blob.size / 1e6).toFixed(1)} MB, ${Math.round(VDUR)} s): pronto per Reels, TikTok e Shorts.`;
+    } catch (e) { vMsg = "Errore nella creazione del video: " + e.message; }
+    $("#vstat").textContent = vMsg; recording = false; $("#dl").disabled = false; playVideo();
+    return;
+  }
+
   const mime = pickMime();
   if (!mime) { $("#vstat").textContent = "Questo browser non può registrare video: usa Chrome, Edge o Safari aggiornati sul computer."; return; }
   recording = true; cancelAnimationFrame(vRaf); $("#dl").disabled = true;

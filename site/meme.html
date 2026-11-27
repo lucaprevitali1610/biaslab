@@ -52,6 +52,8 @@
     </div>
   </div>
 </div>
+<script src="vendor/mp4-muxer.js"></script>
+<script src="vendor/export-mp4.js"></script>
 <script>
 "use strict";
 const $ = (s) => document.querySelector(s);
@@ -142,6 +144,17 @@ function play() { cancelAnimationFrame(raf); const ctx = $("#cv").getContext("2d
   raf = requestAnimationFrame(loop); }
 function pickMime() { return ["video/mp4;codecs=avc1.42E01E", "video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm"].find((m) => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || ""; }
 $("#rec").onclick = async () => {
+  if (window.PRVExport && PRVExport.supported()) {                 // MP4 standard, fotogramma per fotogramma
+    if (recording) return; recording = true; msg = ""; cancelAnimationFrame(raf); $("#rec").disabled = true;
+    try {
+      const blob = await PRVExport.mp4({ duration: T, draw: (c, t) => draw(c, t), onProgress: (q) => ($("#vstat").textContent = `Creazione del video… ${Math.round(q * 100)}%`) });
+      PRVExport.save(blob, "meme-btc-crollo.mp4");
+      msg = `Video scaricato (MP4, ${(blob.size / 1e6).toFixed(1)} MB, ${Math.round(T)} s). Aggiungi l'audio dall'app.`;
+    } catch (e) { msg = "Errore nella creazione del video: " + e.message; }
+    $("#vstat").textContent = msg; recording = false; $("#rec").disabled = false; play();
+    return;
+  }
+
   if (recording) return; const mime = pickMime(); if (!mime) { $("#vstat").textContent = "Questo browser non può registrare video: usa Chrome, Edge o Safari aggiornati."; return; }
   recording = true; msg = ""; cancelAnimationFrame(raf); $("#rec").disabled = true;
   const cv = $("#cv"), ctx = cv.getContext("2d"), stream = cv.captureStream(30), rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 10_000_000 }), chunks = [];
