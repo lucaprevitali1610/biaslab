@@ -152,7 +152,8 @@ function translateTree(root) {
   let n = root.nodeType === 1 ? root : w.nextNode();
   while (n) {
     if (n.nodeType === 3) { const p = n.parentNode && n.parentNode.nodeName; if (p !== "SCRIPT" && p !== "STYLE") { const v = tx(n.nodeValue); if (v !== n.nodeValue) n.nodeValue = v; } }
-    else for (const a of ["title", "placeholder", "aria-label"]) { const v0 = n.getAttribute && n.getAttribute(a); if (v0) { const v = tx(v0); if (v !== v0) n.setAttribute(a, v); } }
+    else { if (n.tagName === "A" && n.getAttribute("href") === "privacy.html") n.setAttribute("href", "privacy.html#en");
+      for (const a of ["title", "placeholder", "aria-label"]) { const v0 = n.getAttribute && n.getAttribute(a); if (v0) { const v = tx(v0); if (v !== v0) n.setAttribute(a, v); } } }
     n = w.nextNode();
   }
 }
