@@ -299,7 +299,7 @@ function title(ctx, W, y, a, b) {   // titolo serif: prima parola normale, secon
 function slideCover(ctx, W, H) {
   slideBg(ctx, W, H, .35);
   slideFrame(ctx, W, H);
-  spaced(ctx, "IL PUNTO DEL LUNEDÌ", W / 2, 470, `500 22px ${SANS}`, G.gold, 7, "center");
+  spaced(ctx, "LA SETTIMANA CHE ARRIVA", W / 2, 470, `500 22px ${SANS}`, G.gold, 7, "center");
   ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
   ctx.font = `500 128px ${SERIF}`; ctx.fillStyle = G.ink; ctx.fillText("Bias della", W / 2, 620);
   ctx.font = `italic 500 140px ${SERIF}`; ctx.fillStyle = goldGrad(ctx, W / 2 - 300, W / 2 + 300); ctx.fillText("settimana", W / 2, 770);
@@ -482,7 +482,7 @@ function cTitle(ctx, y, a, b, size, alpha) {
 function sceneHook(ctx, p) {
   const a = vFade(p), y0 = 20 * (1 - easeOut(p / .25));
   ctx.globalAlpha = a; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
-  spaced(ctx, "IL PUNTO DEL LUNEDÌ", VW / 2, 640 + y0, `500 28px ${SANS}`, G.gold, 8, "center");
+  spaced(ctx, "LA SETTIMANA CHE ARRIVA", VW / 2, 640 + y0, `500 28px ${SANS}`, G.gold, 8, "center");
   ctx.textAlign = "center"; ctx.font = `500 118px ${SERIF}`; ctx.fillStyle = G.ink; ctx.fillText("Dove punta", VW / 2, 800 + y0);
   ctx.font = `italic 500 126px ${SERIF}`; ctx.fillStyle = goldGrad(ctx, VW / 2 - 320, VW / 2 + 320); ctx.fillText("il mercato?", VW / 2, 940 + y0);
   const lw = 440 * easeOut((p - .2) / .35); hline(ctx, VW / 2 - lw / 2, VW / 2 + lw / 2, 1010, .7);
