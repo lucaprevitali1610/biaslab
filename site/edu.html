@@ -39,6 +39,7 @@
       <div class="card" style="margin-bottom:14px">
         <h2>Copione</h2>
         <label class="fld"><span>Copione pronto</span><select id="preset"></select></label>
+        <label class="fld"><span>Stile</span><select id="style"><option value="dark" selected>Scuro (marmo nero e oro)</option><option value="ivory">Avorio (marmo chiaro, testo scuro)</option></select></label>
         <label class="fld"><span>Ritmo</span><select id="pace"><option value="fast" selected>Veloce (consigliato per TikTok e Reels)</option><option value="normal">Normale (più tempo per leggere)</option></select></label>
         <label class="fld"><span>Tema (in alto su ogni scena)</span><input id="f_topic"></label>
         <label class="fld"><span>1 · Gancio (primi 2 secondi)</span><textarea id="f_hook"></textarea></label>
@@ -86,10 +87,26 @@
 "use strict";
 const $ = (s) => document.querySelector(s);
 const VW = 1080, VH = 1920;
-const G = { gold: "#d6bf86", goldHi: "#f1e3b6", goldLo: "#8a6d33", ink: "#f3ede0", soft: "#c9c0aa", mute: "#8f877a" };
+const PAL = {
+  dark:  { gold: "#d6bf86", goldHi: "#f1e3b6", goldLo: "#8a6d33", ink: "#f3ede0", soft: "#c9c0aa", mute: "#8f877a", line: "214,191,134", solid: "#0a0908" },
+  ivory: { gold: "#a8843f", goldHi: "#c9a55c", goldLo: "#6f5322", ink: "#1d1913", soft: "#5a5144", mute: "#8b8170", line: "150,118,58", solid: "#f4eee3" },
+};
+let G = PAL.dark, STYLE = "dark";
 const SERIF = '"Playfair Display", Georgia, serif', SANS = 'Inter, system-ui, sans-serif', MONO = '"IBM Plex Mono", monospace';
 const marble = new Image(); marble.src = "marmo-1.jpg";
 const logo = new Image(); logo.src = "prv-logo.svg";
+// marmo avorio: lo stesso marmo nero, invertito e scaldato (calcolato una volta sola)
+let marbleIvory = null;
+function ivoryMarble() {
+  if (marbleIvory || !(marble.complete && marble.naturalWidth)) return marbleIvory;
+  const c = document.createElement("canvas"), w = Math.min(1600, marble.naturalWidth), h = Math.round(w * marble.naturalHeight / marble.naturalWidth);
+  c.width = w; c.height = h; const x = c.getContext("2d"); x.drawImage(marble, 0, 0, w, h);
+  const im = x.getImageData(0, 0, w, h), d = im.data;
+  for (let i = 0; i < d.length; i += 4) { const r = 255 - d[i], g = 255 - d[i + 1], b = 255 - d[i + 2], l = (r + g + b) / 3;
+    d[i] = Math.min(255, l * .9 + r * .1 + 12); d[i + 1] = Math.min(255, l * .9 + g * .1 + 5); d[i + 2] = Math.max(0, l * .9 + b * .1 - 8); }
+  x.putImageData(im, 0, 0); marbleIvory = c; return c;
+}
+function marbleImg() { return STYLE === "ivory" ? ivoryMarble() : (marble.complete && marble.naturalWidth ? marble : null); }
 const CTA_DEF = "Salvalo per dopo. Lo trovi gratis: link in bio.";
 
 /* ------------------------------------------------------------ copioni pronti */
@@ -135,6 +152,7 @@ $("#preset").innerHTML = PRESETS.map((p, i) => `<option value="${i}">${p.name}</
 function loadPreset(i) { const p = PRESETS[i]; FIELDS.forEach((k) => ($("#f_" + k).value = p[k])); COVER_FIELDS.forEach((k) => ($("#f_" + k).value = p[k])); POST_FIELDS.forEach((k) => ($("#f_" + k).value = p[k] || "")); build(); refreshCover(); }
 $("#preset").onchange = (e) => loadPreset(+e.target.value);
 $("#pace").onchange = () => build();
+$("#style").onchange = (e) => { STYLE = e.target.value; G = PAL[STYLE]; build(); refreshCover(); };
 FIELDS.forEach((k) => $("#f_" + k).addEventListener("input", build));
 COVER_FIELDS.forEach((k) => $("#f_" + k).addEventListener("input", () => { refreshCover(); showCaption(); }));
 POST_FIELDS.forEach((k) => $("#f_" + k).addEventListener("input", () => showCaption()));
@@ -149,7 +167,7 @@ function spaced(ctx, s, x, y, font, color, sp, align = "left") {
   let cx = align === "center" ? x - w / 2 : x; ctx.fillStyle = color; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
   for (const ch of s) { ctx.fillText(ch, cx, y); cx += ctx.measureText(ch).width + sp; } return w;
 }
-function hline(ctx, x0, x1, y, a) { const g = ctx.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, "rgba(214,191,134,0)"); g.addColorStop(.5, `rgba(214,191,134,${a})`); g.addColorStop(1, "rgba(214,191,134,0)"); ctx.fillStyle = g; ctx.fillRect(x0, y, x1 - x0, 1.5); }
+function hline(ctx, x0, x1, y, a) { const g = ctx.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, `rgba(${G.line},0)`); g.addColorStop(.5, `rgba(${G.line},${a})`); g.addColorStop(1, `rgba(${G.line},0)`); ctx.fillStyle = g; ctx.fillRect(x0, y, x1 - x0, 1.5); }
 function wrap(ctx, text, font, maxW) {
   ctx.font = font; const out = []; let line = "";
   for (const w of String(text).trim().split(/\s+/)) { const t = line ? line + " " + w : w; if (ctx.measureText(t).width > maxW && line) { out.push(line); line = w; } else line = t; }
@@ -172,14 +190,15 @@ function block(ctx, text, opts, p) {
 }
 function bg(ctx, t, T) {
   const z = 1.06 + t / T * .1;
-  if (marble.complete && marble.naturalWidth) { const r = Math.max(VW / marble.naturalWidth, VH / marble.naturalHeight) * z, w = marble.naturalWidth * r, h = marble.naturalHeight * r; ctx.drawImage(marble, (VW - w) / 2 - t * 4, (VH - h) / 2 - t * 7, w, h); }
-  else { ctx.fillStyle = "#0b0a09"; ctx.fillRect(0, 0, VW, VH); }
-  ctx.fillStyle = "rgba(6,6,7,.62)"; ctx.fillRect(0, 0, VW, VH);
-  const v = ctx.createRadialGradient(VW / 2, VH * .45, VH * .2, VW / 2, VH * .45, VH * .75); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,.6)"); ctx.fillStyle = v; ctx.fillRect(0, 0, VW, VH);
+  const M = marbleImg(), iv = STYLE === "ivory";
+  if (M) { const r = Math.max(VW / M.width, VH / M.height) * z, w = M.width * r, h = M.height * r; ctx.drawImage(M, (VW - w) / 2 - t * 4, (VH - h) / 2 - t * 7, w, h); }
+  else { ctx.fillStyle = G.solid; ctx.fillRect(0, 0, VW, VH); }
+  ctx.fillStyle = iv ? "rgba(247,242,232,.55)" : "rgba(6,6,7,.62)"; ctx.fillRect(0, 0, VW, VH);
+  const v = ctx.createRadialGradient(VW / 2, VH * .45, VH * .2, VW / 2, VH * .45, VH * .75); v.addColorStop(0, iv ? "rgba(250,246,238,.25)" : "rgba(0,0,0,0)"); v.addColorStop(1, iv ? "rgba(200,188,165,.35)" : "rgba(0,0,0,.6)"); ctx.fillStyle = v; ctx.fillRect(0, 0, VW, VH);
 }
 function frame(ctx, t, T, topic) {
   spaced(ctx, "PRV TRADING CLUB", VW / 2, 150, `500 24px ${SANS}`, G.gold, 7, "center");
-  ctx.fillStyle = "rgba(214,191,134,.18)"; ctx.fillRect(96, 180, 834, 2); ctx.fillStyle = G.gold; ctx.fillRect(96, 180, 834 * clamp01(t / T), 2);
+  ctx.fillStyle = `rgba(${G.line},.18)`; ctx.fillRect(96, 180, 834, 2); ctx.fillStyle = G.gold; ctx.fillRect(96, 180, 834 * clamp01(t / T), 2);
   if (topic) spaced(ctx, topic.toUpperCase(), VW / 2, 240, `500 22px ${SANS}`, G.soft, 6, "center");
 }
 const fadeOf = (p) => easeOut(p / .12) * (1 - easeInOut((p - .9) / .1));
@@ -206,7 +225,8 @@ function build() {
 function drawScene(ctx, s, p) {
   const a = fadeOf(p);
   if (s.k === "hook") {
-    block(ctx, s.text, { family: SERIF, size: 92, min: 60, maxW: 860, maxLines: 5, cy: 880, color: G.ink, alpha: a }, p);
+    // visibile dal primo fotogramma (è quello che si vede nel feed): solo dissolvenza in uscita
+    block(ctx, s.text, { family: SERIF, size: 92, min: 60, maxW: 860, maxLines: 5, cy: 880, color: G.ink, alpha: 1 - easeInOut((p - .9) / .1) }, 1);
   } else if (s.k === "problem") {
     ctx.globalAlpha = a; spaced(ctx, "IL PROBLEMA", VW / 2, 640, `500 26px ${SANS}`, G.gold, 8, "center"); ctx.globalAlpha = 1;
     block(ctx, s.text, { family: SANS, weight: 400, size: 54, min: 38, maxW: 840, maxLines: 6, cy: 900, color: G.ink, alpha: a, lh: 1.35 }, p);
