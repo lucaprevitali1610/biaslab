@@ -1,5 +1,5 @@
 /* PRV · esportazione video in MP4 standard (H.264), fotogramma per fotogramma.
-   Produce un file normale (non frammentato, indice all'inizio) che telefoni e app leggono con la durata giusta.
+   Produce un file normale (non frammentato, indice all'inizio, con traccia audio silenziosa) che telefoni e app leggono con la durata giusta.
    Usa WebCodecs (Chrome, Edge, Safari 16.4+, Firefox 130+) e mp4-muxer (MIT, vendor/mp4-muxer.js). */
 "use strict";
 window.PRVExport = {
@@ -10,7 +10,8 @@ window.PRVExport = {
     let codec = null;
     for (const c of codecs) { try { const s = await VideoEncoder.isConfigSupported({ codec: c, width, height, bitrate, framerate: fps }); if (s.supported) { codec = c; break; } } catch {} }
     if (!codec) throw new Error("Il browser non sa codificare H.264");
-    const muxer = new Mp4Muxer.Muxer({ target: new Mp4Muxer.ArrayBufferTarget(), video: { codec: "avc", width, height, frameRate: fps }, fastStart: "in-memory", firstTimestampBehavior: "offset" });
+    const muxer = new Mp4Muxer.Muxer({ target: new Mp4Muxer.ArrayBufferTarget(), video: { codec: "avc", width, height, frameRate: fps },
+      audio: { codec: "aac", numberOfChannels: 2, sampleRate: 48000 }, fastStart: "in-memory", firstTimestampBehavior: "offset" });
     let err = null;
     const enc = new VideoEncoder({ output: (chunk, meta) => muxer.addVideoChunk(chunk, meta), error: (e) => (err = e) });
     enc.configure({ codec, width, height, bitrate, framerate: fps, avc: { format: "avc" } });
@@ -26,6 +27,11 @@ window.PRVExport = {
       if (i % 10 === 0) { onProgress(i / n); await new Promise((r) => setTimeout(r, 0)); }
     }
     await enc.flush(); enc.close(); if (err) throw err;
+    // traccia audio silenziosa (AAC-LC 48 kHz stereo): il file è strutturato come un video registrato dal telefono.
+    // TikTok e Instagram sostituiscono il silenzio con la musica scelta nell'app.
+    const SILENT = new Uint8Array([0x21, 0x00, 0x49, 0x90, 0x02, 0x19, 0x00, 0x23, 0x80]), fdur = 1024 / 48000 * 1e6;
+    const meta = { decoderConfig: { codec: "mp4a.40.2", numberOfChannels: 2, sampleRate: 48000, description: new Uint8Array([0x11, 0x90]) } };
+    for (let k = 0, na = Math.ceil(duration * 48000 / 1024); k < na; k++) muxer.addAudioChunkRaw(SILENT, "key", Math.round(k * fdur), Math.round(fdur), k === 0 ? meta : undefined);
     muxer.finalize(); onProgress(1);
     return new Blob([muxer.target.buffer], { type: "video/mp4" });
   },
