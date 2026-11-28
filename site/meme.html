@@ -169,5 +169,6 @@ $("#rec").onclick = async () => {
 };
 (async () => { await Promise.all(["800 60px Inter", "700 60px Inter", "500 30px Inter", "700 60px 'IBM Plex Mono'", "italic 500 60px 'Playfair Display'"].map((f) => document.fonts.load(f))); await new Promise((r) => (logo.complete ? r() : (logo.onload = logo.onerror = r))); play(); })();
 </script>
+<script src="vendor/gen-nav.js"></script>
 </body>
 </html>

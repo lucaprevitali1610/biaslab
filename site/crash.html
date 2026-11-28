@@ -211,5 +211,6 @@ $("#rec").onclick = async () => {
 $("#seed").addEventListener("input", build);
 (async () => { await Promise.all(["italic 500 60px 'Playfair Display'", "600 60px Inter"].map((f) => document.fonts.load(f))); await new Promise((r) => (logo.complete ? r() : (logo.onload = logo.onerror = r))); build(); play(); })();
 </script>
+<script src="vendor/gen-nav.js"></script>
 </body>
 </html>
