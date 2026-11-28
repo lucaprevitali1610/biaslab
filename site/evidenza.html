@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Copertine storie in evidenza — PRV</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body{background:var(--bg)}
+  .gen{max-width:1180px;margin:0 auto;padding:28px 24px 60px}
+  .gen h1{margin:0;font:700 28px var(--head);letter-spacing:-.03em}
+  .sub{color:var(--mute);margin:4px 0 22px}
+  .hl{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:22px}
+  .it{text-align:center}
+  .it canvas{width:150px;height:150px;border-radius:50%;border:2px solid #3a3a40;display:block;margin:0 auto 10px}
+  .it b{display:block;margin-bottom:8px}
+  .note{font-size:12.5px;color:var(--mute);line-height:1.55;margin-top:24px;max-width:760px}
+  a.back{color:var(--mute);font-size:13px;text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="gen">
+  <div class="eyebrow">PRV · strumento interno</div>
+  <h1>Copertine delle storie in evidenza</h1>
+  <div class="sub">Immagini 1080×1920 per Instagram: il simbolo sta al centro, nel cerchio che Instagram ritaglia. <a class="back" href="domanda.html">Video "Domanda"</a></div>
+  <div class="hl" id="hl"></div>
+  <p class="note">Su Instagram: tieni premuta la storia in evidenza → <b>Modifica storia in evidenza</b> → <b>Modifica copertina</b> → icona della galleria, scegli l'immagine e centrala nel cerchio. I nomi sotto ogni icona sono quelli consigliati (massimo 15 caratteri).</p>
+</div>
+<script>
+"use strict";
+const W = 1080, H = 1920, CX = 540, CY = 960;
+const G = { gold: "#d6bf86", goldHi: "#f1e3b6", goldLo: "#8a6d33" };
+const marble = new Image(); marble.src = "marmo-1.jpg";
+const logo = new Image(); logo.src = "prv-logo.svg";
+
+function bg(ctx) {
+  if (marble.complete && marble.naturalWidth) { const r = Math.max(W / marble.naturalWidth, H / marble.naturalHeight) * 1.1, w = marble.naturalWidth * r, h = marble.naturalHeight * r; ctx.drawImage(marble, (W - w) / 2, (H - h) / 2, w, h); }
+  else { ctx.fillStyle = "#0b0a09"; ctx.fillRect(0, 0, W, H); }
+  ctx.fillStyle = "rgba(6,6,7,.72)"; ctx.fillRect(0, 0, W, H);
+  // alone dorato dietro il simbolo
+  const g = ctx.createRadialGradient(CX, CY, 20, CX, CY, 520); g.addColorStop(0, "rgba(214,191,134,.16)"); g.addColorStop(1, "rgba(214,191,134,0)"); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+}
+const gold = (ctx) => { const g = ctx.createLinearGradient(CX - 300, CY - 300, CX + 300, CY + 300); g.addColorStop(0, G.goldHi); g.addColorStop(.5, G.gold); g.addColorStop(1, G.goldLo); return g; };
+function pen(ctx, w = 18) { ctx.strokeStyle = gold(ctx); ctx.fillStyle = gold(ctx); ctx.lineWidth = w; ctx.lineCap = "round"; ctx.lineJoin = "round"; }
+
+const ICONS = [
+  { id: "academy", name: "Academy", draw(ctx) {           // tocco da laureato
+    pen(ctx);
+    ctx.beginPath(); ctx.moveTo(CX - 290, CY - 40); ctx.lineTo(CX, CY - 165); ctx.lineTo(CX + 290, CY - 40); ctx.lineTo(CX, CY + 85); ctx.closePath(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(CX - 165, CY + 20); ctx.lineTo(CX - 165, CY + 150); ctx.quadraticCurveTo(CX, CY + 235, CX + 165, CY + 150); ctx.lineTo(CX + 165, CY + 20); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(CX, CY - 40); ctx.lineTo(CX + 235, CY + 5); ctx.lineTo(CX + 235, CY + 175); ctx.stroke();
+    ctx.beginPath(); ctx.arc(CX + 235, CY + 200, 26, 0, Math.PI * 2); ctx.fill();
+  } },
+  { id: "domanda", name: "Domande", draw(ctx) {           // punto di domanda in Playfair corsivo
+    ctx.fillStyle = gold(ctx); ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.font = 'italic 500 600px "Playfair Display", Georgia, serif'; ctx.fillText("?", CX + 10, CY + 20);
+  } },
+  { id: "bias", name: "Bias", draw(ctx) {                  // bussola: dove punta il mercato
+    pen(ctx, 16);
+    ctx.beginPath(); ctx.arc(CX, CY, 260, 0, Math.PI * 2); ctx.stroke();
+    for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2; ctx.beginPath(); ctx.moveTo(CX + Math.cos(a) * 205, CY + Math.sin(a) * 205); ctx.lineTo(CX + Math.cos(a) * 235, CY + Math.sin(a) * 235); ctx.stroke(); }
+    const a = -Math.PI / 4, ux = Math.cos(a), uy = Math.sin(a), px = -uy, py = ux, L = 185, S = 46;
+    ctx.beginPath(); ctx.moveTo(CX + ux * L, CY + uy * L); ctx.lineTo(CX + px * S, CY + py * S); ctx.lineTo(CX - px * S, CY - py * S); ctx.closePath(); ctx.fill();
+    ctx.lineWidth = 12; ctx.beginPath(); ctx.moveTo(CX - ux * L, CY - uy * L); ctx.lineTo(CX + px * S, CY + py * S); ctx.lineTo(CX - px * S, CY - py * S); ctx.closePath(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(CX, CY, 16, 0, Math.PI * 2); ctx.fillStyle = "#0b0a09"; ctx.fill();
+  } },
+  { id: "strumenti", name: "Strumenti", draw(ctx) {       // tre candele che salgono
+    pen(ctx, 14);
+    const C = [[-210, 110, 190, true], [0, -5, 240, false], [210, -130, 290, true]];
+    C.forEach(([dx, top, h, full]) => {
+      const x = CX + dx, y = CY + top - h / 2 + 20, w = 112;
+      ctx.beginPath(); ctx.moveTo(x, y - 70); ctx.lineTo(x, y); ctx.moveTo(x, y + h); ctx.lineTo(x, y + h + 60); ctx.stroke();
+      ctx.beginPath(); ctx.roundRect(x - w / 2, y, w, h, 10); if (full) ctx.fill(); else ctx.stroke();
+    });
+  } },
+  { id: "cot", name: "COT", draw(ctx) {                    // barre long/short
+    pen(ctx, 14);
+    ctx.beginPath(); ctx.moveTo(CX - 270, CY); ctx.lineTo(CX + 270, CY); ctx.stroke();
+    [[-200, -150], [-100, -230], [0, -90], [100, 140], [200, 220]].forEach(([dx, h]) => { ctx.beginPath(); ctx.roundRect(CX + dx - 34, h < 0 ? CY + h - 18 : CY + 18, 68, Math.abs(h), 10); h < 0 ? ctx.fill() : ctx.stroke(); });
+  } },
+  { id: "chi-sono", name: "Chi sono", draw(ctx) {         // logo PRV
+    if (logo.complete && logo.naturalWidth) { const lw = 470, lh = lw * logo.naturalHeight / logo.naturalWidth; ctx.drawImage(logo, CX - lw / 2, CY - lh / 2, lw, lh); }
+  } },
+];
+function render(ic, c) { const ctx = c.getContext("2d"); ctx.clearRect(0, 0, W, H); bg(ctx); ic.draw(ctx); }
+function dl(ic) {
+  const c = document.createElement("canvas"); c.width = W; c.height = H; render(ic, c);
+  c.toBlob((b) => { const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `evidenza-${ic.id}.png`; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800); }, "image/png");
+}
+(async () => {
+  await document.fonts.load('italic 500 100px "Playfair Display"');
+  await Promise.all([marble, logo].map((im) => new Promise((r) => (im.complete ? r() : (im.onload = im.onerror = r)))));
+  const box = document.getElementById("hl");
+  ICONS.forEach((ic) => {
+    const d = document.createElement("div"); d.className = "it";
+    const prev = document.createElement("canvas"); prev.width = 600; prev.height = 600;
+    const full = document.createElement("canvas"); full.width = W; full.height = H; render(ic, full);
+    prev.getContext("2d").drawImage(full, 0, (H - W) / 2, W, W, 0, 0, 600, 600);
+    const btn = document.createElement("button"); btn.className = "btn ghost"; btn.textContent = "Scarica"; btn.onclick = () => dl(ic);
+    const b = document.createElement("b"); b.textContent = ic.name;
+    d.append(prev, b, btn); box.append(d);
+  });
+})();
+</script>
+</body>
+</html>
